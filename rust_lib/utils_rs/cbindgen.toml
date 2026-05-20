@@ -1,0 +1,13 @@
+language = "C++"
+namespace = "utils_ffi"
+
+[export]
+include = [
+    "ControlPoint",
+    "ComponentMix",
+    "ToneMappingRuleFfi",
+    "DynamicMetadataFfi",
+    "ToSt209450ResultFfi",
+    "FromSt209450ResultFfi",
+    "SimpleResultFfi",
+]

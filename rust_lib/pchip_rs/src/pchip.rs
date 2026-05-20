@@ -28,6 +28,7 @@ fn three_point_finite_difference(h0: f32, h1: f32, s0: f32, s1: f32) -> f32 {
     m
 }
 
+#[repr(C)]
 pub struct PchipSlopesResult {
     pub slopes: Vec<f32>,
     pub success: bool,
@@ -43,12 +44,19 @@ impl PchipSlopesResult {
     }
 }
 
+#[cfg(not(feature = "cbindgen"))]
 pub fn pchip_slopes_ffi(x: &[f32], y: &[f32]) -> PchipSlopesResult {
     match pchip_slopes(x, y) {
         Ok(slopes) => PchipSlopesResult { slopes, success: true, error_message: String::new() },
         Err(e) => PchipSlopesResult { slopes: Vec::new(), success: false, error_message: e },
     }
 }
+
+#[cfg(feature = "cbindgen")]
+pub mod capi;
+#[cfg(feature = "cbindgen")]
+#[allow(unused_imports)]
+pub use capi::*;
 
 /// Computes the slopes for a piecewise cubic interpolator with the given control points.
 ///
@@ -136,6 +144,7 @@ pub struct PchipInterpolator {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[repr(C)]
 pub struct ReverseInterpolateResult {
     pub xi: f32,
     pub success: bool,
@@ -459,6 +468,7 @@ pub fn sub_sample_dist(x: &[f32], y: &[f32], n_break: usize) -> Result<Vec<usize
     Ok(selected_indices)
 }
 
+#[cfg(not(feature = "cbindgen"))]
 pub fn create_subsampled_pchip_ffi(
     x: &[f32],
     y: &[f32],
@@ -513,6 +523,7 @@ pub fn create_subsampled_pchip(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(feature = "cbindgen"))]
     google3::import! {
         "//third_party/gtest_rust/googletest";
     }

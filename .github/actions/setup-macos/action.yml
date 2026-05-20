@@ -1,0 +1,33 @@
+name: "Setup on macOS"
+description: "Installs dependencies specific to macOS"
+inputs:
+  extra-cache-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+  gtest:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache.outputs.ext-cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Install gtest
+      if: ${{ inputs.gtest == 'SYSTEM' }}
+      run: echo "SMPTE_MAC_LIBRARIES=googletest" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Install libraries
+      if: env.SMPTE_MAC_LIBRARIES != ''
+      run: |
+        brew update
+        brew cleanup
+        brew install ${{ env.SMPTE_MAC_LIBRARIES }}
+      shell: bash
+
+    - uses: ./.github/actions/cache
+      id: cache
+      with:
+        extra-key: ${{ inputs.extra-cache-key }}
+    - uses: ./.github/actions/setup-common

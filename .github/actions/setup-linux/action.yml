@@ -1,0 +1,37 @@
+name: "Setup on Linux"
+description: "Installs dependencies and sets env variables specific to Linux"
+inputs:
+  extra-cache-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+  gtest:
+    description: "Can take the values: OFF, LOCAL, SYSTEM"
+    default: "OFF"
+  oldest-cmake:
+    description: "Can take the values: true, false"
+    default: "false"
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache.outputs.ext-cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Set up gtest
+      if: ${{ inputs.gtest == 'SYSTEM' }}
+      run: echo "SMPTE_UNIX_LIBRARIES=libgtest-dev" >> "$GITHUB_ENV"
+      shell: bash
+
+    - name: Install libraries
+      run: |
+        sudo apt update -y
+        sudo apt install -y ${{ env.SMPTE_UNIX_LIBRARIES }}
+      shell: bash
+
+    - uses: ./.github/actions/cache
+      id: cache
+      with:
+        extra-key: ${{ inputs.extra-cache-key }}
+    - uses: ./.github/actions/setup-common
+      with:
+        codec-rav1e: ${{ inputs.codec-rav1e }}
+        oldest-cmake: ${{ inputs.oldest-cmake }}

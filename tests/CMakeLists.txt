@@ -12,15 +12,54 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
+set(SMPTE2094_50_GTEST_GIT_TAG v1.17.0)
+
 enable_testing()
 
 macro(add_gtest TEST_NAME)
-    add_executable(${TEST_NAME} ${TEST_NAME}.cc)
-    target_link_libraries(${TEST_NAME} PRIVATE GTest::GTest GTest::Main smpte2094-50 smpte2094-50_utils)
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+  add_executable(${TEST_NAME} ${TEST_NAME}.cc)
+  target_link_libraries(
+    ${TEST_NAME} PRIVATE GTest::gmock GTest::GTest GTest::Main smpte2094_50
+                         smpte2094_50_utils)
+  add_dependencies(${TEST_NAME} generate_include_links_test)
+  target_include_directories(
+    ${TEST_NAME}
+    PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/virtual_includes>)
+  add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endmacro()
 
-find_package(GTest)
+FetchContent_Declare(
+  googletest
+  EXCLUDE_FROM_ALL
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG ${SMPTE2094_50_GTEST_GIT_TAG}
+  GIT_SHALLOW ON)
+FetchContent_MakeAvailable(googletest)
+
+add_library(GTest::GTest ALIAS gtest)
+add_library(GTest::Main ALIAS gtest_main)
+# No need for gmock as absl imports it.
+
+add_custom_target(
+  generate_include_links_test ALL
+  COMMAND ${CMAKE_COMMAND} -E make_directory
+          "${CMAKE_BINARY_DIR}/virtual_includes"
+  COMMAND
+    ${CMAKE_COMMAND} -E create_symlink
+    "${CMAKE_BINARY_DIR}/_deps/googletest-src/googletest/include/gtest"
+    "${CMAKE_BINARY_DIR}/virtual_includes/gtest"
+  COMMAND
+    ${CMAKE_COMMAND} -E create_symlink
+    "${CMAKE_BINARY_DIR}/_deps/googletest-src/googlemock/include/gmock"
+    "${CMAKE_BINARY_DIR}/virtual_includes/gmock"
+  COMMAND
+    ${CMAKE_COMMAND} -E make_directory
+    "${CMAKE_BINARY_DIR}/virtual_includes/third_party/libsmpte2094_50/tests"
+  COMMAND
+    ${CMAKE_COMMAND} -E create_symlink
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_helper.h"
+    "${CMAKE_BINARY_DIR}/virtual_includes/third_party/libsmpte2094_50/tests/test_helper.h"
+)
 
 add_gtest(base_test)
 add_gtest(pchip_test)

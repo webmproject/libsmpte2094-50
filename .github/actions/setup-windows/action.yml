@@ -1,0 +1,41 @@
+name: "Setup on Windows"
+description: "Installs dependencies specific to Windows"
+inputs:
+  extra-cache-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache.outputs.ext-cache-hit }}
+  vcpkg-cmake-config:
+    value: ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Developer Command Prompt for Microsoft Visual C++
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Install libraries
+      uses: johnwason/vcpkg-action@caa1c94fbb94d8b023a0cc93edf10cd3791349a7 # v7.0.1
+      if: env.SMPTE_WIN_LIBRARIES != ''
+      id: vcpkg
+      with:
+        pkgs: ${{ env.SMPTE_WIN_LIBRARIES }}
+        triplet: x64-windows-release
+        token: ${{ github.token }}
+        cache-key: ${{ hashFiles('cmake/Modules/*', 'ext/*.cmd', 'ext/*.sh') }}
+
+    - name: Create folders
+      if: env.SMPTE_WIN_LIBRARIES == ''
+      run: |
+        mkdir -p ${{ github.workspace }}\vcpkg\installed\x64-windows-release\bin
+        mkdir -p ${{ github.workspace }}\vcpkg\installed\x64-windows-release\include
+        mkdir -p ${{ github.workspace }}\vcpkg\installed\x64-windows-release\lib
+        mkdir -p ${{ github.workspace }}\vcpkg\installed\x64-windows-release\pkgconfig
+      shell: pwsh
+
+    - uses: ./.github/actions/cache
+      id: cache
+      with:
+        extra-key: ${{ inputs.extra-cache-key }}
+    - uses: ./.github/actions/setup-common

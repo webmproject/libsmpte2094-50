@@ -1,0 +1,19 @@
+[package]
+name = "utils_rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "utils_rs"
+path = "src/utils.rs"
+crate-type = ["staticlib", "lib"]
+
+[dependencies]
+pchip_rs = { path = "../pchip_rs" }
+
+[features]
+default = ["cbindgen"]
+cbindgen = []
+
+[dev-dependencies]
+googletest = "0.12"

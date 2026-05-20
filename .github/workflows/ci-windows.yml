@@ -1,0 +1,50 @@
+# This is a copy of ci-unix-static.yml for Windows. It differs from ci-unix-static.yml as follows:
+#
+#   * The os matrix consists of windows-latest only.
+#   * Installs Visual Studio in the os image.
+
+name: CI Windows
+on:
+  push:
+  pull_request:
+    paths:
+      - ".github/actions/**"
+      - ".github/workflows/ci-windows.yml"
+      - "**CMakeLists.txt"
+
+permissions:
+  contents: read
+
+# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-windows:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+        generator: [Ninja, "Visual Studio 17 2022"]
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-windows
+        id: setup
+        with:
+          extra-cache-key: ${{ matrix.generator }}
+
+      - name: Prepare libsmpte2094_50 (cmake)
+        run: >
+          cmake -G "${{ matrix.generator }}" -S . -B build
+          -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+          -DSMPTE2094_ENABLE_TESTS=ON -DSMPTE2094_GTEST=LOCAL
+          -DSMPTE2094_ENABLE_WERROR=ON
+          -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Run Tests
+        working-directory: ./build
+        run: ctest -C Release -j $Env:NUMBER_OF_PROCESSORS --output-on-failure

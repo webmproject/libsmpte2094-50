@@ -16,7 +16,11 @@
 // Basic types, according to SMPTE ST 2094-50.
 // Serialization and deserialization functions are also provided.
 use std::f32::consts::PI;
-use crate::pchip::pchip_slopes;
+#[cfg(not(feature = "cbindgen"))]
+google3::import! {
+    "//third_party/libsmpte2094_50:pchip_rs";
+}
+use pchip_rs::pchip_slopes;
 
 const NUM_MIX_PARAMS: usize = 6;
 const MIX_PARAM_SCALE: f32 = 50000.0;
@@ -33,8 +37,21 @@ const GAIN_APPLICATION_SPACE_CHROMATICITIES: [[f32; 8]; 3] = [
     [0.708, 0.292, 0.17, 0.797, 0.131, 0.046, 0.3127, 0.329], // Rec. 2020
 ];
 
+/// Returns the value that would be encoded for a given float value and scale.
+fn encoded_float(value: f32, scale: f32) -> u16 {
+    // Assumes that for negative values, the sign is encoded separately, and we only care about the
+    // absolute value here.
+    (value.abs() * scale).round() as u16
+}
+
+/// Returns the value that would be decoded from a given encoded float value and scale.
+fn encode_decode_float(value: f32, scale: f32) -> f32 {
+    encoded_float(value, scale) as f32 / scale * value.signum()
+}
+
 // A 2D point with optional slope.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[repr(C)]
 pub struct ControlPoint {
     pub x: f32, // in [0., 64.]
     pub y: f32, // in [-6., 6.]
@@ -50,6 +67,7 @@ impl ControlPoint {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[repr(C)]
 pub struct ComponentMix {
     pub rgb: [f32; 3],
     pub max: f32,
@@ -118,7 +136,11 @@ impl ToneMappingRule {
             if self.curve[i].x > self.curve[i + 1].x {
                 return false;
             }
-            if self.curve[i].x == self.curve[i + 1].x && self.curve[i].y != self.curve[i + 1].y {
+            let encoded_x = encoded_float(self.curve[i].x, 1000.0);
+            let encoded_x_next = encoded_float(self.curve[i + 1].x, 1000.0);
+            let encoded_y = encoded_float(self.curve[i].y, 10000.0);
+            let encoded_y_next = encoded_float(self.curve[i + 1].y, 10000.0);
+            if encoded_x == encoded_x_next && encoded_y != encoded_y_next {
                 return false;
             }
         }
@@ -161,6 +183,7 @@ impl ToSt209450Result {
 }
 
 // Foreign function interface for to_st2094_50().
+#[cfg(not(feature = "cbindgen"))]
 pub fn to_st209450_ffi(metadata: &DynamicMetadata) -> ToSt209450Result {
     match metadata.to_st2094_50() {
         Ok(data) => ToSt209450Result { success: true, data, error_message: String::new() },
@@ -168,11 +191,19 @@ pub fn to_st209450_ffi(metadata: &DynamicMetadata) -> ToSt209450Result {
     }
 }
 
+#[cfg(not(feature = "cbindgen"))]
 pub fn is_valid_ffi(metadata: &DynamicMetadata) -> bool {
     metadata.is_valid()
 }
 
+#[cfg(feature = "cbindgen")]
+pub mod capi;
+#[cfg(feature = "cbindgen")]
+#[allow(unused_imports)]
+pub use capi::*;
+
 // Result of a 2094-50 deserialization for C++ wrapping.
+#[repr(C)]
 pub struct FromSt209450Result {
     pub success: bool,
     pub metadata: DynamicMetadata,
@@ -186,6 +217,7 @@ impl FromSt209450Result {
 }
 
 // Foreign function interface for from_st2094_50().
+#[cfg(not(feature = "cbindgen"))]
 pub fn from_st209450_ffi(data: &[u8]) -> FromSt209450Result {
     match DynamicMetadata::from_st2094_50(data) {
         Ok(metadata) => {
@@ -217,10 +249,12 @@ pub fn to_simple_result(result: Result<(), String>) -> SimpleResult {
     }
 }
 
+#[cfg(not(feature = "cbindgen"))]
 pub fn populate_implicit_parameters_ffi(metadata: &mut DynamicMetadata) -> SimpleResult {
     to_simple_result(metadata.populate_implicit_parameters())
 }
 
+#[cfg(not(feature = "cbindgen"))]
 pub fn dynamic_metadata_populate_pchip_slopes_ffi(metadata: &mut DynamicMetadata) -> SimpleResult {
     to_simple_result(metadata.populate_pchip_slopes())
 }
@@ -233,22 +267,29 @@ impl DynamicMetadata {
         if self.hdr_reference_white <= 0.0 || self.hdr_reference_white > 10000.0 {
             return false;
         }
+        let encoded_hdr_reference_white = encoded_float(self.hdr_reference_white, 5.0);
+        if encoded_hdr_reference_white == 0 {
+            return false;
+        }
         // SMPTE ST 2094-50, section 6.2.2.
         if !(0.0..=6.0).contains(&self.baseline_hdr_headroom_log2) {
             return false;
         }
+        let encoded_baseline = encoded_float(self.baseline_hdr_headroom_log2, 10000.0);
         if self.rules.len() > 4 {
             return false;
         }
         for i in 0..self.rules.len() {
-            if self.rules[i].alternate_hdr_headroom_log2 == self.baseline_hdr_headroom_log2 {
+            let encoded_alt = encoded_float(self.rules[i].alternate_hdr_headroom_log2, 10000.0);
+            if encoded_alt == encoded_baseline {
                 return false;
             }
-            if i > 0
-                && self.rules[i - 1].alternate_hdr_headroom_log2
-                    >= self.rules[i].alternate_hdr_headroom_log2
-            {
-                return false;
+            if i > 0 {
+                let alt_prev = self.rules[i - 1].alternate_hdr_headroom_log2;
+                let encoded_alt_prev = encoded_float(alt_prev, 10000.0);
+                if encoded_alt_prev >= encoded_alt {
+                    return false;
+                }
             }
         }
         if self.gain_application_space_chromaticities.iter().any(|&c| !(0.0..=1.0).contains(&c)) {
@@ -257,7 +298,7 @@ impl DynamicMetadata {
 
         // SMPTE ST 2094-50, section 6.2.2.
         // Check triangle area and interior point.
-        let c = self.gain_application_space_chromaticities;
+        let c = self.gain_application_space_chromaticities.map(|c| encode_decode_float(c, 50000.0));
         let (xr, yr) = (c[0], c[1]);
         let (xg, yg) = (c[2], c[3]);
         let (xb, yb) = (c[4], c[5]);
@@ -857,7 +898,10 @@ impl<'a> BitReader<'a> {
 
 #[cfg(test)]
 mod tests {
-    use googletest;
+    #[cfg(not(feature = "cbindgen"))]
+    google3::import! {
+        "//third_party/gtest_rust/googletest";
+    }
 
     use super::*;
     use googletest::prelude::*;
@@ -899,6 +943,32 @@ mod tests {
     }
 
     #[gtest]
+    fn test_tone_mapping_rule_invalid_curve_x_order() {
+        let rule = ToneMappingRule {
+            alternate_hdr_headroom_log2: 1.0,
+            curve: vec![
+                ControlPoint { x: 2.0, y: 1.0, m: 0.0 },
+                ControlPoint { x: 1.0, y: 2.0, m: 0.0 }, // x decreases
+            ],
+            ..Default::default()
+        };
+        expect_false!(rule.is_valid());
+    }
+
+    #[gtest]
+    fn test_tone_mapping_rule_invalid_curve_same_x_different_y() {
+        let rule = ToneMappingRule {
+            alternate_hdr_headroom_log2: 1.0,
+            curve: vec![
+                ControlPoint { x: 1.0, y: 1.0, m: 0.0 },
+                ControlPoint { x: 1.0, y: 2.0, m: 0.0 }, // Same x, different y
+            ],
+            ..Default::default()
+        };
+        expect_false!(rule.is_valid());
+    }
+
+    #[gtest]
     fn test_gain_curve_sign_should_constraint() {
         let mut metadata = DynamicMetadata {
             hdr_reference_white: 1000.0,
@@ -915,6 +985,23 @@ mod tests {
         };
         metadata.rules.push(rule);
 
+        expect_false!(metadata.is_valid());
+    }
+
+    #[gtest]
+    fn test_headroom_precision_rounding() {
+        // baseline = 2.0 -> encoded = 20000
+        // alt = 2.000001 -> encoded = 20000
+        // They should be considered equal and thus invalid.
+        let mut metadata = DynamicMetadata {
+            hdr_reference_white: 1000.0,
+            baseline_hdr_headroom_log2: 2.0,
+            gain_application_space_chromaticities: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.3, 0.3],
+            ..Default::default()
+        };
+        metadata
+            .rules
+            .push(ToneMappingRule { alternate_hdr_headroom_log2: 2.000001, ..Default::default() });
         expect_false!(metadata.is_valid());
     }
 }

@@ -28,7 +28,7 @@
 namespace smpte2094_50 {
 namespace {
 
-// TODO(vrabaud) add a serizalition fuzz test with a DynamicMetadata
+// TODO(vrabaud) add a serialization fuzz test with a DynamicMetadata
 // generator.
 void DynamicMetadataSerializationFuzzTest(const std::string_view buffer) {
   // Generate a random DynamicMetadata instance by reading from a random
@@ -37,21 +37,25 @@ void DynamicMetadataSerializationFuzzTest(const std::string_view buffer) {
   if (!metadata_init.ok()) return;
   const DynamicMetadata metadata = metadata_init.value();
 
-  // 1. Serialize the metadata.
+  // Serialize the metadata.
   absl::StatusOr<std::string> serialized = ToSt209450(metadata);
   if (!serialized.ok()) {
     std::cerr << "Serialization failed: " << serialized.status() << "\n";
     std::abort();
   }
 
-  // 2. Deserialize the serialized data.
+  // Deserialize the serialized data.
   absl::StatusOr<DynamicMetadata> deserialized = FromSt209450(*serialized);
   if (!deserialized.ok()) {
     std::cerr << "Deserialization failed: " << deserialized.status() << "\n";
     std::abort();
   }
 
-  // 3. Verify they match.
+  if (IsValid(metadata_init.value())) {
+    EXPECT_TRUE(IsValid(deserialized.value()));
+  }
+
+  // Verify they match.
   EXPECT_THAT(metadata, DynamicMetadataEq(*deserialized));
 }
 

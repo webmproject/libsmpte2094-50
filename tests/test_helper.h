@@ -17,11 +17,15 @@
 #ifndef LIBSMPTE2094_50_TESTS_TEST_HELPER_H_
 #define LIBSMPTE2094_50_TESTS_TEST_HELPER_H_
 
+#include <cmath>
 #include <cstddef>
-#include <numbers>
 
+#if defined(BAZEL_BUILD)
 #include "testing/base/public/gmock.h"
 #include "testing/base/public/gunit.h"
+#else
+#include "gmock/gmock-matchers.h"
+#endif
 
 namespace smpte2094_50 {
 
@@ -82,9 +86,10 @@ MATCHER(ToneMappingRuleEq, "") {
       return false;
     }
     if (!lhs.use_pchip_slope) {
+      static const float kPi = std::acos(-1.0f);
       if (!testing::ExplainMatchResult(
               testing::FloatNear(std::atan(rhs.curve[i].m),
-                                 std::numbers::pi / 36000 + kExtraTolerance),
+                                 kPi / 36000 + kExtraTolerance),
               std::atan(lhs.curve[i].m), result_listener)) {
         *result_listener << " at curve[" << i << "].m";
         return false;

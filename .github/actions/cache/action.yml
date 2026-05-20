@@ -1,0 +1,43 @@
+name: "Cache for all OSes"
+description: "Needs to be called before any call to ext/.cmd|sh or cmake"
+inputs:
+  extra-key:
+    description: "Extra cache key to use in the cache name. Useful when several caches are used in one workflow."
+    default: ""
+outputs:
+  ext-cache-hit:
+    value: ${{ steps.cache-ext.outputs.cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Find workflow path
+      env:
+        WORKFLOW_REF: ${{ github.workflow_ref }}
+      id: workflow-info
+      run: |
+        # Remove repository path.
+        END=(${WORKFLOW_REF/*.github/.github})
+        # Remove branch reference starting with @.
+        MIDDLE=(${END/%@*/})
+        echo "Current workflow path is: ${MIDDLE}"
+        echo "path=${MIDDLE}" >> "$GITHUB_OUTPUT"
+      shell: bash
+    - name: Generate cargo cache key
+      run: |
+        echo "CARGO_KEY=cargo-`cargo --version|cut -d' ' -f2`-${{ hashFiles('.github/actions/setup-common/action.yml', steps.workflow-info.outputs.path) }}" >> $GITHUB_ENV
+      shell: bash
+    - name: Cache all of cargo
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      continue-on-error: true
+      with:
+        path: |
+          ~/.cargo
+          build/cargo
+          cargo*
+          corrosion
+        key: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}
+    - name: Cache external dependencies in build/_deps
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      with:
+        path: build/_deps
+        key: deps-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'CMakeLists.txt') }}

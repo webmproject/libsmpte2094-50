@@ -1,0 +1,37 @@
+# This is a copy of ci-unix-shared-local.yml for Linux only and using the oldest supported CMake
+
+name: CI Linux Oldest CMake
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+# Cancel the workflow if a new one is triggered from the same PR, branch, or tag, except on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-shared-local:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    name: build-linux-oldest-cmake
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: ./.github/actions/setup-linux
+        with:
+          oldest-cmake: true
+
+      - name: CMake
+        run: >
+          cmake -G Ninja -S . -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DBUILD_SHARED_LIBS=OFF
+          -DSMPTE2094_ENABLE_TESTS=ON -DSMPTE2094_ENABLE_WERROR=ON
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Run Tests
+        working-directory: ./build
+        run: ctest --parallel --output-on-failure

@@ -1,0 +1,16 @@
+[package]
+name = "pchip_rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "pchip_rs"
+path = "src/pchip.rs"
+crate-type = ["staticlib", "lib"]
+
+[features]
+default = ["cbindgen"]
+cbindgen = []
+
+[dev-dependencies]
+googletest = "0.12"

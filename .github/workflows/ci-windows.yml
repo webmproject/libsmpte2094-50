@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest]
-        generator: [Ninja, "Visual Studio 17 2022"]
+        generator: ["-G Ninja", ""]
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -38,7 +38,7 @@ jobs:
 
       - name: Prepare libsmpte2094_50 (cmake)
         run: >
-          cmake -G "${{ matrix.generator }}" -S . -B build
+          cmake ${{ matrix.generator }} -S . -B build
           -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
           -DSMPTE2094_ENABLE_TESTS=ON -DSMPTE2094_GTEST=LOCAL
           -DSMPTE2094_ENABLE_WERROR=ON

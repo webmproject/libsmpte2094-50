@@ -74,8 +74,7 @@ if(NOT TARGET cbindgen)
 endif()
 
 set(GENERATED_HEADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated_headers")
-set(TARGET_INCLUDE_SUBDIR
-    "${GENERATED_HEADERS_DIR}/third_party/libsmpte2094_50")
+set(TARGET_INCLUDE_SUBDIR "${GENERATED_HEADERS_DIR}/libsmpte2094_50")
 file(MAKE_DIRECTORY ${TARGET_INCLUDE_SUBDIR})
 
 add_custom_target(
@@ -106,16 +105,16 @@ corrosion_import_crate(MANIFEST_PATH
 
 add_custom_target(
   generate_include_links ALL
+  COMMAND ${CMAKE_COMMAND} -E make_directory
+          "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/libsmpte2094_50"
   COMMAND
-    ${CMAKE_COMMAND} -E make_directory
-    "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/third_party/libsmpte2094_50"
-  COMMAND
-    ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/third_party/libsmpte2094_50/include"
+    ${CMAKE_COMMAND} -E create_symlink
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/smpte2094_50"
+    "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/libsmpte2094_50/smpte2094_50"
   COMMAND
     ${CMAKE_COMMAND} -E create_symlink
     "${CMAKE_CURRENT_BINARY_DIR}/_deps/abseil-cpp-src/absl"
-    "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/third_party/absl")
+    "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/absl")
 
 # -----------------------------------------------------------------------------
 # Library Definition

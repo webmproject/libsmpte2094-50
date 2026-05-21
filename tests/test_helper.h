@@ -20,12 +20,7 @@
 #include <cmath>
 #include <cstddef>
 
-#if defined(BAZEL_BUILD)
-#include "testing/base/public/gmock.h"
-#include "testing/base/public/gunit.h"
-#else
 #include "gmock/gmock-matchers.h"
-#endif
 
 namespace smpte2094_50 {
 

@@ -16,14 +16,9 @@
 
 #include <vector>
 
-#include "third_party/absl/types/span.h"
-#if defined(BAZEL_BUILD)
-#include "testing/base/public/gunit.h"
-#include "third_party/libsmpte2094_50/pchip_rs.h"
-#else
+#include "absl/types/span.h"
 #include "gtest/gtest.h"
 #include "pchip_ffi.h"
-#endif
 
 namespace smpte2094_50 {
 namespace {

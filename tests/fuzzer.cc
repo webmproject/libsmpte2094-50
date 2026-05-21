@@ -18,12 +18,12 @@
 #include <iostream>
 #include <string_view>
 
+#include "absl/status/statusor.h"
+#include "smpte2094_50/smpte2094_50.h"
+#include "smpte2094_50/utils.h"
+#include "test_helper.h"
 #include "testing/base/public/gmock.h"
 #include "testing/fuzzing/fuzztest.h"
-#include "third_party/absl/status/statusor.h"
-#include "third_party/libsmpte2094_50/include/smpte2094_50/smpte2094_50.h"
-#include "third_party/libsmpte2094_50/include/smpte2094_50/utils.h"
-#include "third_party/libsmpte2094_50/tests/test_helper.h"
 
 namespace smpte2094_50 {
 namespace {

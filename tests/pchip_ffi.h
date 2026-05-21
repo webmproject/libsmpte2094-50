@@ -21,8 +21,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "third_party/absl/types/span.h"
-#include "third_party/libsmpte2094_50/pchip_rs.h"
+#include "absl/types/span.h"
+#include "libsmpte2094_50/pchip_rs.h"
 
 namespace pchip_rs {
 

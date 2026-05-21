@@ -14,77 +14,68 @@
  * limitations under the License.
  */
 
-#include "third_party/libsmpte2094_50/include/smpte2094_50/utils.h"
+#include "smpte2094_50/utils.h"
 
 #include <vector>
 
-#include "third_party/libsmpte2094_50/include/smpte2094_50/smpte2094_50.h"
-#if defined(BAZEL_BUILD)
-#include "testing/base/public/gunit.h"
-#else
 #include "gtest/gtest.h"
-#endif
+#include "smpte2094_50/smpte2094_50.h"
 
-namespace smpte2094_50
-{
-namespace
-{
+namespace smpte2094_50 {
+namespace {
 
-TEST(PopulatePchipSlopesTest, PopulatesSlopes)
-{
-    DynamicMetadata metadata;
-    ToneMappingRule rule;
-    rule.use_pchip_slope = true;
-    rule.curve = { { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 0.0f }, { 2.0f, 0.0f, 0.0f } };
-    metadata.rules.push_back(rule);
+TEST(PopulatePchipSlopesTest, PopulatesSlopes) {
+  DynamicMetadata metadata;
+  ToneMappingRule rule;
+  rule.use_pchip_slope = true;
+  rule.curve = {{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {2.0f, 0.0f, 0.0f}};
+  metadata.rules.push_back(rule);
 
-    EXPECT_TRUE(PopulatePchipSlopes(metadata).ok());
+  EXPECT_TRUE(PopulatePchipSlopes(metadata).ok());
 
-    EXPECT_FALSE(metadata.rules[0].use_pchip_slope);
-    ASSERT_EQ(metadata.rules[0].curve.size(), 3);
+  EXPECT_FALSE(metadata.rules[0].use_pchip_slope);
+  ASSERT_EQ(metadata.rules[0].curve.size(), 3);
 
-    // Slopes for {0,1,2}, {0,1,0} are {2, 0, -2}
-    EXPECT_NEAR(metadata.rules[0].curve[0].m, 2.0f, 1e-6f);
-    EXPECT_NEAR(metadata.rules[0].curve[1].m, 0.0f, 1e-6f);
-    EXPECT_NEAR(metadata.rules[0].curve[2].m, -2.0f, 1e-6f);
+  // Slopes for {0,1,2}, {0,1,0} are {2, 0, -2}
+  EXPECT_NEAR(metadata.rules[0].curve[0].m, 2.0f, 1e-6f);
+  EXPECT_NEAR(metadata.rules[0].curve[1].m, 0.0f, 1e-6f);
+  EXPECT_NEAR(metadata.rules[0].curve[2].m, -2.0f, 1e-6f);
 }
 
-TEST(PopulateImplicitParametersTest, PopulatesRwtm)
-{
-    DynamicMetadata metadata;
-    metadata.baseline_hdr_headroom_log2 = 2.0f;
-    metadata.use_reference_white_tone_mapping_flag = true;
+TEST(PopulateImplicitParametersTest, PopulatesRwtm) {
+  DynamicMetadata metadata;
+  metadata.baseline_hdr_headroom_log2 = 2.0f;
+  metadata.use_reference_white_tone_mapping_flag = true;
 
-    // Pre-existing rule (will be cleared).
-    ToneMappingRule rule;
-    rule.use_pchip_slope = true;
-    rule.curve = { { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 0.0f }, { 2.0f, 0.0f, 0.0f } };
-    metadata.rules.push_back(rule);
+  // Pre-existing rule (will be cleared).
+  ToneMappingRule rule;
+  rule.use_pchip_slope = true;
+  rule.curve = {{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {2.0f, 0.0f, 0.0f}};
+  metadata.rules.push_back(rule);
 
-    EXPECT_TRUE(PopulateImplicitParameters(metadata).ok());
+  EXPECT_TRUE(PopulateImplicitParameters(metadata).ok());
 
-    // If use_reference_white_tone_mapping_flag is true, it overrides everything.
-    EXPECT_EQ(metadata.rules.size(), 2);
-    EXPECT_FALSE(metadata.rules[0].use_pchip_slope);
-    EXPECT_FALSE(metadata.rules[1].use_pchip_slope);
+  // If use_reference_white_tone_mapping_flag is true, it overrides everything.
+  EXPECT_EQ(metadata.rules.size(), 2);
+  EXPECT_FALSE(metadata.rules[0].use_pchip_slope);
+  EXPECT_FALSE(metadata.rules[1].use_pchip_slope);
 }
 
-TEST(PopulateImplicitParametersTest, PopulatesPchip)
-{
-    DynamicMetadata metadata;
-    metadata.use_reference_white_tone_mapping_flag = false;
+TEST(PopulateImplicitParametersTest, PopulatesPchip) {
+  DynamicMetadata metadata;
+  metadata.use_reference_white_tone_mapping_flag = false;
 
-    ToneMappingRule rule;
-    rule.use_pchip_slope = true;
-    rule.curve = { { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 0.0f }, { 2.0f, 0.0f, 0.0f } };
-    metadata.rules.push_back(rule);
+  ToneMappingRule rule;
+  rule.use_pchip_slope = true;
+  rule.curve = {{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {2.0f, 0.0f, 0.0f}};
+  metadata.rules.push_back(rule);
 
-    EXPECT_TRUE(PopulateImplicitParameters(metadata).ok());
+  EXPECT_TRUE(PopulateImplicitParameters(metadata).ok());
 
-    EXPECT_EQ(metadata.rules.size(), 1);
-    EXPECT_FALSE(metadata.rules[0].use_pchip_slope);
-    EXPECT_NEAR(metadata.rules[0].curve[1].m, 0.0f, 1e-6f);
+  EXPECT_EQ(metadata.rules.size(), 1);
+  EXPECT_FALSE(metadata.rules[0].use_pchip_slope);
+  EXPECT_NEAR(metadata.rules[0].curve[1].m, 0.0f, 1e-6f);
 }
 
-} // namespace
-} // namespace smpte2094_50
+}  // namespace
+}  // namespace smpte2094_50

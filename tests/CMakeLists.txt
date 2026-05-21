@@ -51,15 +51,7 @@ add_custom_target(
   COMMAND
     ${CMAKE_COMMAND} -E create_symlink
     "${CMAKE_BINARY_DIR}/_deps/googletest-src/googlemock/include/gmock"
-    "${CMAKE_BINARY_DIR}/virtual_includes/gmock"
-  COMMAND
-    ${CMAKE_COMMAND} -E make_directory
-    "${CMAKE_BINARY_DIR}/virtual_includes/third_party/libsmpte2094_50/tests"
-  COMMAND
-    ${CMAKE_COMMAND} -E create_symlink
-    "${CMAKE_CURRENT_SOURCE_DIR}/test_helper.h"
-    "${CMAKE_BINARY_DIR}/virtual_includes/third_party/libsmpte2094_50/tests/test_helper.h"
-)
+    "${CMAKE_BINARY_DIR}/virtual_includes/gmock")
 
 add_gtest(base_test)
 add_gtest(pchip_test)

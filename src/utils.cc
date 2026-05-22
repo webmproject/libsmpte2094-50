@@ -26,7 +26,6 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "smpte2094_50/smpte2094_50.h"
-#include "smpte2094_50/utils.h"
 #include "utils_ffi.h"
 
 namespace smpte2094_50 {

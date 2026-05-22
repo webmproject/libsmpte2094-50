@@ -26,6 +26,7 @@ macro(add_gtest TEST_NAME)
     ${TEST_NAME}
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/virtual_includes>)
   add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+  target_compile_features(${TEST_NAME} PRIVATE cxx_std_20)
 endmacro()
 
 FetchContent_Declare(

@@ -28,7 +28,8 @@ TEST(PopulatePchipSlopesTest, PopulatesSlopes) {
   DynamicMetadata metadata;
   ToneMappingRule rule;
   rule.use_pchip_slope = true;
-  rule.curve = {{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {2.0f, 0.0f, 0.0f}};
+  rule.curve = {
+      {.x = 0.0f, .y = 0.0f}, {.x = 1.0f, .y = 1.0f}, {.x = 2.0f, .y = 0.0f}};
   metadata.rules.push_back(rule);
 
   EXPECT_TRUE(PopulatePchipSlopes(metadata).ok());
@@ -50,7 +51,8 @@ TEST(PopulateImplicitParametersTest, PopulatesRwtm) {
   // Pre-existing rule (will be cleared).
   ToneMappingRule rule;
   rule.use_pchip_slope = true;
-  rule.curve = {{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {2.0f, 0.0f, 0.0f}};
+  rule.curve = {
+      {.x = 0.0f, .y = 0.0f}, {.x = 1.0f, .y = 1.0f}, {.x = 2.0f, .y = 0.0f}};
   metadata.rules.push_back(rule);
 
   EXPECT_TRUE(PopulateImplicitParameters(metadata).ok());
@@ -67,7 +69,8 @@ TEST(PopulateImplicitParametersTest, PopulatesPchip) {
 
   ToneMappingRule rule;
   rule.use_pchip_slope = true;
-  rule.curve = {{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {2.0f, 0.0f, 0.0f}};
+  rule.curve = {
+      {.x = 0.0f, .y = 0.0f}, {.x = 1.0f, .y = 1.0f}, {.x = 2.0f, .y = 0.0f}};
   metadata.rules.push_back(rule);
 
   EXPECT_TRUE(PopulateImplicitParameters(metadata).ok());

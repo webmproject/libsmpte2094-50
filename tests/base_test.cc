@@ -18,13 +18,12 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/match.h"
 #include "gmock/gmock-matchers.h"
 #include "gtest/gtest.h"
 #include "smpte2094_50/smpte2094_50.h"
 #include "smpte2094_50/utils.h"
 #include "test_helper.h"
-
-using ::testing::HasSubstr;
 
 namespace smpte2094_50 {
 namespace {
@@ -51,7 +50,7 @@ TEST(MetadataTest_St209450Roundtrip, St209450Roundtrip) {
               .component = 0.f},
   });
 
- auto st209450_data_or = ToSt209450(metadata);
+  auto st209450_data_or = ToSt209450(metadata);
   ASSERT_TRUE(st209450_data_or.ok());
   std::string st209450_data = *st209450_data_or;
 
@@ -120,8 +119,8 @@ TEST(MetadataTest_St209450Roundtrip, InvalidMetadataWrongSign) {
   auto status_or = ToSt209450(metadata);
   EXPECT_FALSE(status_or.ok());
   EXPECT_EQ(status_or.status().code(), absl::StatusCode::kInvalidArgument);
-  EXPECT_TRUE(std::string(status_or.status().message())
-                  .find("Sign of y does not match") != std::string::npos);
+  EXPECT_TRUE(absl::StrContains(status_or.status().message(),
+                                "Sign of y does not match"));
 }
 
 TEST(MetadataTest, FailsOnCurveSize) {
@@ -153,8 +152,8 @@ TEST(MetadataTest, FailsOnCurveSize) {
     auto status_or = ToSt209450(metadata);
     EXPECT_FALSE(status_or.ok());
     EXPECT_EQ(status_or.status().code(), absl::StatusCode::kInvalidArgument);
-    EXPECT_TRUE(std::string(status_or.status().message())
-                    .find("curve size 33 is > 32") != std::string::npos);
+    EXPECT_TRUE(absl::StrContains(status_or.status().message(),
+                                  "curve size 33 is > 32"));
   }
 
   metadata.rules[0].curve.clear();
@@ -162,8 +161,8 @@ TEST(MetadataTest, FailsOnCurveSize) {
     auto status_or = ToSt209450(metadata);
     EXPECT_FALSE(status_or.ok());
     EXPECT_EQ(status_or.status().code(), absl::StatusCode::kInvalidArgument);
-    EXPECT_TRUE(std::string(status_or.status().message())
-                    .find("curve size 0 is > 32 or == 0") != std::string::npos);
+    EXPECT_TRUE(absl::StrContains(status_or.status().message(),
+                                  "curve size 0 is > 32 or == 0"));
   }
 }
 

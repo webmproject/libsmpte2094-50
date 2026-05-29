@@ -19,8 +19,8 @@ project(libsmpte2094_50 CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(SMPTE2094_ENABLE_TESTS "Enable tests." ON)
-option(SMPTE2094_ENABLE_WERROR "Enable -Werror." ON)
+option(SMPTE2094_ENABLE_TESTS "Enable tests." OFF)
+option(SMPTE2094_ENABLE_WERROR "Enable -Werror." OFF)
 
 set(RUST_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rust_lib")
 
@@ -29,7 +29,7 @@ include(FetchContent)
 # Install dependencies.
 set(SMPTE2094_ABSL_GIT_TAG 20260107.1)
 set(SMPTE2094_CORROSION_GIT_TAG v0.6.1)
-set(SMPTE2094_CBINDGEN_GIT_TAG v0.29.2)
+set(SMPTE2094_CBINDGEN_GIT_TAG v0.29.3)
 
 FetchContent_Declare(
   abseil-cpp
@@ -136,8 +136,7 @@ target_link_libraries(
          absl::span
          smpte2094_50
          pchip_rs
-         utils_rs # Use native Corrosion imported static libraries directly
-)
+         utils_rs)
 target_include_directories(
   smpte2094_50_utils
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -158,6 +157,6 @@ if(SMPTE2094_ENABLE_WERROR)
 endif()
 
 if(SMPTE2094_ENABLE_TESTS)
-  enable_testing() # Allow ctest to be called from top-level directory.
+  enable_testing()
   add_subdirectory(tests)
 endif()

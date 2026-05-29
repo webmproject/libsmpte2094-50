@@ -1,3 +1,12 @@
+[package]
+name = "libsmpte2094-50"
+version = "0.1.1"
+edition = "2021"
+
+[dependencies]
+pchip_rs = { path = "pchip_rs", version = "0.1.1" }
+utils_rs = { path = "utils_rs", version = "0.1.1" }
+
 [workspace]
 members = [
     "pchip_rs",

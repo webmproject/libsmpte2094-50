@@ -16,6 +16,8 @@
 // PCHIP interpolation functions and related utilities.
 use std::cmp::Ordering;
 
+/// Computes the three-point finite difference formula for derivative approximation at the boundary
+/// of a non-zero interval, as used in PCHIP interpolation.
 fn three_point_finite_difference(h0: f32, h1: f32, s0: f32, s1: f32) -> f32 {
     let num = (2.0 * h0 + h1) * s0 - h0 * s1;
     let den = h0 + h1;
@@ -28,22 +30,29 @@ fn three_point_finite_difference(h0: f32, h1: f32, s0: f32, s1: f32) -> f32 {
     m
 }
 
+/// Result structure for FFI calls computing PCHIP slopes, containing the slopes or an error message.
 #[repr(C)]
 pub struct PchipSlopesResult {
+    /// The computed PCHIP slope values for each control point.
     pub slopes: Vec<f32>,
+    /// True if the slope computation was successful, false otherwise.
     pub success: bool,
+    /// Detailed error message if the computation failed.
     pub error_message: String,
 }
 
 impl PchipSlopesResult {
+    /// Returns the computed slopes if successful.
     pub fn get_slopes(&self) -> &[f32] {
         &self.slopes
     }
+    /// Returns the error message if the computation failed.
     pub fn get_error_message(&self) -> &str {
         &self.error_message
     }
 }
 
+/// FFI wrapper for `pchip_slopes`, returning a `PchipSlopesResult` for C/C++ interoperability.
 #[cfg(not(feature = "cbindgen"))]
 pub fn pchip_slopes_ffi(x: &[f32], y: &[f32]) -> PchipSlopesResult {
     match pchip_slopes(x, y) {
@@ -136,33 +145,47 @@ pub fn pchip_slopes(x: &[f32], y: &[f32]) -> Result<Vec<f32>, String> {
     Ok(d)
 }
 
+/// A Piecewise Cubic Hermite Interpolating Polynomial (PCHIP) interpolator.
+/// Maintains control points `x`, `y`, and precomputed `slopes` to evaluate the interpolating curve.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PchipInterpolator {
+    /// Monotonically increasing x-coordinates of the control points.
     pub x: Vec<f32>,
+    /// Corresponding y-coordinates of the control points.
     pub y: Vec<f32>,
+    /// Precomputed Hermite slopes (derivatives) at each control point.
     pub slopes: Vec<f32>,
 }
 
+/// Result structure for reverse interpolation evaluations, indicating the estimated `xi` and whether the search succeeded.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct ReverseInterpolateResult {
+    /// The estimated x-coordinate that maps to the target y-value.
     pub xi: f32,
+    /// True if a valid matching x-coordinate was successfully found.
     pub success: bool,
 }
 
+/// Result structure for FFI calls creating a `PchipInterpolator`, containing the interpolator instance or an error message.
 pub struct PchipInterpolatorResult {
+    /// The resulting PCHIP interpolator instance if creation succeeded.
     pub interp: PchipInterpolator,
+    /// True if the interpolator was successfully created, false otherwise.
     pub success: bool,
+    /// Detailed error message if the creation failed.
     pub error_message: String,
 }
 
 impl PchipInterpolatorResult {
+    /// Returns the error message if the interpolator creation failed.
     pub fn get_error_message(&self) -> &str {
         &self.error_message
     }
 }
 
 impl PchipInterpolator {
+    /// FFI wrapper for `PchipInterpolator::create`, returning a `PchipInterpolatorResult`.
     pub fn create_ffi(x: &[f32], y: &[f32]) -> PchipInterpolatorResult {
         match Self::create(x.to_vec(), y.to_vec()) {
             Ok(interp) => {
@@ -313,30 +336,41 @@ impl PchipInterpolator {
         ReverseInterpolateResult { xi: *self.x.last().unwrap(), success: false }
     }
 
+    /// Returns the `x` control points.
     pub fn x(&self) -> &[f32] {
         &self.x
     }
+    /// Returns the `y` control points.
     pub fn y(&self) -> &[f32] {
         &self.y
     }
+    /// Returns the precomputed slopes.
     pub fn slopes(&self) -> &[f32] {
         &self.slopes
     }
 }
 
+/// A gain curve representation based on a PCHIP interpolator, supporting logarithmic extrapolation.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GainCurve {
+    /// The underlying PCHIP interpolator defining the gain curve.
     pub interp: PchipInterpolator,
+    /// The minimum y-value reached by the interpolator, used for extrapolation.
     pub y_min: f32,
 }
 
+/// Result structure for FFI calls creating a `GainCurve`, containing the gain curve instance or an error message.
 pub struct GainCurveResult {
+    /// The resulting gain curve instance if creation succeeded.
     pub curve: GainCurve,
+    /// True if the gain curve was successfully created, false otherwise.
     pub success: bool,
+    /// Detailed error message if the creation failed.
     pub error_message: String,
 }
 
 impl GainCurveResult {
+    /// Returns the error message if the gain curve creation failed.
     pub fn get_error_message(&self) -> &str {
         &self.error_message
     }
@@ -362,6 +396,7 @@ impl GainCurve {
         Self { interp, y_min }
     }
 
+    /// FFI wrapper for `GainCurve::create`, returning a `GainCurveResult`.
     pub fn create_ffi(x: &[f32], y: &[f32]) -> GainCurveResult {
         match Self::create(x.to_vec(), y.to_vec()) {
             Ok(curve) => GainCurveResult { curve, success: true, error_message: String::new() },
@@ -371,6 +406,7 @@ impl GainCurve {
         }
     }
 
+    /// FFI wrapper for `GainCurve::create_with_slopes`, returning a `GainCurveResult`.
     pub fn create_with_slopes_ffi(x: &[f32], y: &[f32], slopes: &[f32]) -> GainCurveResult {
         let curve = Self::create_with_slopes(x.to_vec(), y.to_vec(), slopes.to_vec());
         GainCurveResult { curve, success: true, error_message: String::new() }
@@ -468,6 +504,7 @@ pub fn sub_sample_dist(x: &[f32], y: &[f32], n_break: usize) -> Result<Vec<usize
     Ok(selected_indices)
 }
 
+/// FFI wrapper for `create_subsampled_pchip`, returning a `PchipInterpolatorResult`.
 #[cfg(not(feature = "cbindgen"))]
 pub fn create_subsampled_pchip_ffi(
     x: &[f32],

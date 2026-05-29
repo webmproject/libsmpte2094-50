@@ -14,5 +14,5 @@
  * limitations under the License.
  */
 // Basic lib for SMPTE ST 2094-50.
-pub mod pchip;
-pub mod utils;
+pub use pchip_rs as pchip;
+pub use utils_rs as utils;

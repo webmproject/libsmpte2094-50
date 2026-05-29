@@ -49,33 +49,42 @@ fn encode_decode_float(value: f32, scale: f32) -> f32 {
     encoded_float(value, scale) as f32 / scale * value.signum()
 }
 
-// A 2D point with optional slope.
+/// A 2D control point with an optional slope `m`, used to define tone mapping curves.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct ControlPoint {
-    pub x: f32, // in [0., 64.]
-    pub y: f32, // in [-6., 6.]
-    // Optional, used if use_pchip_slope is false.
+    /// The x-coordinate of the control point, in the range [0.0, 64.0].
+    pub x: f32,
+    /// The y-coordinate of the control point, in the range [-6.0, 6.0].
+    pub y: f32,
+    /// Optional slope (derivative) at this control point, used if `use_pchip_slope` is false.
     pub m: f32,
 }
 
 impl ControlPoint {
+    /// Returns true if the point satisfies the validity constraints in SMPTE ST 2094-50, section 6.5.2.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.5.2.
         (0.0..=64.0).contains(&self.x) && (-6.0..=6.0).contains(&self.y)
     }
 }
 
+/// Component mixing parameters for tone mapping rules, defined according to SMPTE ST 2094-50.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct ComponentMix {
+    /// Mixing weights for the respective R, G, and B color channels, each in [0.0, 1.0].
     pub rgb: [f32; 3],
+    /// Mixing weight for the maximum color channel value (max(R, G, B)), in [0.0, 1.0].
     pub max: f32,
+    /// Mixing weight for the minimum color channel value (min(R, G, B)), in [0.0, 1.0].
     pub min: f32,
+    /// Mixing weight for the individual component channel, in [0.0, 1.0].
     pub component: f32,
 }
 
 impl ComponentMix {
+    /// Returns true if the component mix satisfies the validity constraints in SMPTE ST 2094-50, section 6.4.2.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.4.2.
         let all_in_range = self.rgb.iter().all(|&c| (0.0..=1.0).contains(&c))
@@ -113,16 +122,21 @@ impl ComponentMix {
     }
 }
 
-// Alternative tone mapping rule.
+/// Alternative tone mapping rule defining a curve, headroom, and mixing parameters.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ToneMappingRule {
-    pub alternate_hdr_headroom_log2: f32, // in [0., 6.]
-    pub curve: Vec<ControlPoint>,         // up to 32 points.
-    pub use_pchip_slope: bool,            // if false, curve[i].m is used.
+    /// The log2 upper limit of the alternate display headroom, in the range [0.0, 6.0].
+    pub alternate_hdr_headroom_log2: f32,
+    /// The sequence of control points specifying the tone mapping curve (up to 32 points).
+    pub curve: Vec<ControlPoint>,
+    /// True if PCHIP slopes should be computed dynamically, false to use `m` from control points.
+    pub use_pchip_slope: bool,
+    /// The component mixing parameters for this tone mapping rule.
     pub mix: ComponentMix,
 }
 
 impl ToneMappingRule {
+    /// Returns true if the tone mapping rule satisfies the validity constraints in SMPTE ST 2094-50.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.2.2.
         if !(0.0..=6.0).contains(&self.alternate_hdr_headroom_log2) {
@@ -147,42 +161,55 @@ impl ToneMappingRule {
         self.curve.iter().all(|p| p.is_valid()) && self.mix.is_valid()
     }
 
+    /// Returns a reference to the control points defining the curve.
     pub fn get_curve(&self) -> &[ControlPoint] {
         &self.curve
     }
+    /// Adds a control point to the curve.
     pub fn add_point(&mut self, point: ControlPoint) {
         self.curve.push(point);
     }
 }
 
-// SMPTE ST 2094-50 metadata.
+/// SMPTE ST 2094-50 dynamic metadata container, holding global parameters and tone mapping rules.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct DynamicMetadata {
+    /// True if adaptive tone mapping metadata is present.
     pub has_adaptive_tone_map_flag: bool,
+    /// True if Reference White Tone Mapping (RWTM) is used to populate the rules.
     pub use_reference_white_tone_mapping_flag: bool,
-    pub hdr_reference_white: f32,        // in nits, in (0., 10000.]
-    pub baseline_hdr_headroom_log2: f32, // in [0., 6.]
+    /// The mastering display HDR reference white in nits, in the range (0.0, 10000.0].
+    pub hdr_reference_white: f32,
+    /// The log2 upper limit of the baseline mastering display headroom, in the range [0.0, 6.0].
+    pub baseline_hdr_headroom_log2: f32,
+    /// Primaries and white point chromaticities of the color space where gain is applied.
     pub gain_application_space_chromaticities: [f32; 8],
-    pub rules: Vec<ToneMappingRule>, // At most 4 elements.
+    /// The sequence of alternative tone mapping rules (at most 4 elements).
+    pub rules: Vec<ToneMappingRule>,
 }
 
+/// Result of a SMPTE ST 2094-50 serialization for C++ wrapping, containing the serialized bytes or an error message.
 pub struct ToSt209450Result {
+    /// True if the serialization was successful, false otherwise.
     pub success: bool,
+    /// The serialized SMPTE ST 2094-50 binary data buffer.
     pub data: Vec<u8>,
+    /// Detailed error message if serialization failed.
     pub error_message: String,
 }
 
-// Result of a 2094-50 serialization for C++ wrapping.
 impl ToSt209450Result {
+    /// Returns the serialized data buffer if successful.
     pub fn get_data(&self) -> &[u8] {
         &self.data
     }
+    /// Returns the error message if serialization failed.
     pub fn get_error_message(&self) -> &str {
         &self.error_message
     }
 }
 
-// Foreign function interface for to_st2094_50().
+/// Foreign function interface wrapper for `DynamicMetadata::to_st2094_50`.
 #[cfg(not(feature = "cbindgen"))]
 pub fn to_st209450_ffi(metadata: &DynamicMetadata) -> ToSt209450Result {
     match metadata.to_st2094_50() {
@@ -191,6 +218,7 @@ pub fn to_st209450_ffi(metadata: &DynamicMetadata) -> ToSt209450Result {
     }
 }
 
+/// Foreign function interface wrapper for `DynamicMetadata::is_valid`.
 #[cfg(not(feature = "cbindgen"))]
 pub fn is_valid_ffi(metadata: &DynamicMetadata) -> bool {
     metadata.is_valid()
@@ -202,21 +230,25 @@ pub mod capi;
 #[allow(unused_imports)]
 pub use capi::*;
 
-// Result of a 2094-50 deserialization for C++ wrapping.
+/// Result of a SMPTE ST 2094-50 deserialization for C++ wrapping, containing the parsed metadata or an error message.
 #[repr(C)]
 pub struct FromSt209450Result {
+    /// True if deserialization was successful, false otherwise.
     pub success: bool,
+    /// The deserialized dynamic metadata container.
     pub metadata: DynamicMetadata,
+    /// Detailed error message if deserialization failed.
     pub error_message: String,
 }
 
 impl FromSt209450Result {
+    /// Returns the error message if deserialization failed.
     pub fn get_error_message(&self) -> &str {
         &self.error_message
     }
 }
 
-// Foreign function interface for from_st2094_50().
+/// Foreign function interface wrapper for `DynamicMetadata::from_st2094_50`.
 #[cfg(not(feature = "cbindgen"))]
 pub fn from_st209450_ffi(data: &[u8]) -> FromSt209450Result {
     match DynamicMetadata::from_st2094_50(data) {
@@ -231,17 +263,22 @@ pub fn from_st209450_ffi(data: &[u8]) -> FromSt209450Result {
     }
 }
 
+/// A generic result structure for C++ wrapping representing success or failure with an error message.
 pub struct SimpleResult {
+    /// True if the operation was successful, false otherwise.
     pub success: bool,
+    /// Detailed error message if the operation failed.
     pub error_message: String,
 }
 
 impl SimpleResult {
+    /// Returns the error message if the operation failed.
     pub fn get_error_message(&self) -> &str {
         &self.error_message
     }
 }
 
+/// Converts a Rust `Result<(), String>` into a `SimpleResult` for FFI returns.
 pub fn to_simple_result(result: Result<(), String>) -> SimpleResult {
     match result {
         Ok(_) => SimpleResult { success: true, error_message: String::new() },
@@ -249,19 +286,21 @@ pub fn to_simple_result(result: Result<(), String>) -> SimpleResult {
     }
 }
 
+/// Foreign function interface wrapper for `DynamicMetadata::populate_implicit_parameters`.
 #[cfg(not(feature = "cbindgen"))]
 pub fn populate_implicit_parameters_ffi(metadata: &mut DynamicMetadata) -> SimpleResult {
     to_simple_result(metadata.populate_implicit_parameters())
 }
 
+/// Foreign function interface wrapper for `DynamicMetadata::populate_pchip_slopes`.
 #[cfg(not(feature = "cbindgen"))]
 pub fn dynamic_metadata_populate_pchip_slopes_ffi(metadata: &mut DynamicMetadata) -> SimpleResult {
     to_simple_result(metadata.populate_pchip_slopes())
 }
 
 impl DynamicMetadata {
-    // Returns true if the metadata satisfies all the mandatory parameter
-    // constraints in SMPTE ST 2094-50, including constraints for serialization.
+    /// Returns true if the metadata satisfies all mandatory parameter constraints in SMPTE ST 2094-50,
+    /// including constraints required for serialization.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.1.2.
         if self.hdr_reference_white <= 0.0 || self.hdr_reference_white > 10000.0 {
@@ -341,6 +380,7 @@ impl DynamicMetadata {
         true
     }
 
+    /// Returns the index mode for the gain application space chromaticities, or 3 if custom.
     fn gain_application_space_chromaticities_mode(&self) -> i32 {
         GAIN_APPLICATION_SPACE_CHROMATICITIES
             .iter()
@@ -350,15 +390,17 @@ impl DynamicMetadata {
             .unwrap_or(3) as i32
     }
 
+    /// Returns a reference to the tone mapping rules.
     pub fn get_rules(&self) -> &[ToneMappingRule] {
         &self.rules
     }
 
+    /// Adds a tone mapping rule to the metadata.
     pub fn add_rule(&mut self, rule: ToneMappingRule) {
         self.rules.push(rule);
     }
 
-    // Implement section C.3.8 of SMPTE ST 2094-50.
+    /// Implements section C.3.8 of SMPTE ST 2094-50, populating rules using Reference White Tone Mapping (RWTM).
     fn populate_using_rwtm(&mut self) {
         self.has_adaptive_tone_map_flag = true;
         self.use_reference_white_tone_mapping_flag = true;
@@ -451,6 +493,7 @@ impl DynamicMetadata {
         Ok(())
     }
 
+    /// Populates implicit parameters in the metadata, such as RWTM rules and PCHIP slopes.
     pub fn populate_implicit_parameters(&mut self) -> Result<(), String> {
         if self.use_reference_white_tone_mapping_flag {
             self.populate_using_rwtm();
@@ -458,6 +501,7 @@ impl DynamicMetadata {
         self.populate_pchip_slopes()
     }
 
+    /// Serializes the dynamic metadata to the SMPTE ST 2094-50 binary format.
     fn to_st2094_50(&self) -> Result<Vec<u8>, String> {
         let mut writer = BitWriter::new();
 
@@ -633,6 +677,7 @@ impl DynamicMetadata {
         Ok(writer.get_data())
     }
 
+    /// Deserializes dynamic metadata from the SMPTE ST 2094-50 binary format.
     fn from_st2094_50(data: &[u8]) -> Result<DynamicMetadata, String> {
         let mut metadata = DynamicMetadata::default();
         let mut reader = BitReader::new(data);
@@ -797,14 +842,18 @@ impl DynamicMetadata {
     }
 }
 
+/// Foreign function interface wrapper for `DynamicMetadata::populate_using_rwtm`.
 pub fn dynamic_metadata_populate_using_rwtm(metadata: &mut DynamicMetadata) {
     metadata.populate_using_rwtm();
 }
 
-// Bit manipulation utilities
+/// Bit manipulation utility for writing packed bitstreams.
 struct BitWriter {
+    /// The output byte buffer accumulating the packed bitstream.
     buffer: Vec<u8>,
+    /// Temporary bit buffer holding unaligned bits before writing to the byte buffer.
     bit_buffer: u64,
+    /// The current number of valid bits stored in `bit_buffer`.
     bit_count: i8,
 }
 
@@ -826,7 +875,7 @@ impl BitWriter {
         }
     }
 
-    // Writes a float that fits in the u16 range.
+    /// Writes a float that fits in the u16 range.
     fn write_float(&mut self, value: f32) {
         assert!(value >= 0.0);
         self.write(value.round() as u16, 16);
@@ -848,10 +897,13 @@ impl BitWriter {
     }
 }
 
-// Basic bit reader used for deserialization.
+/// Basic bit reader utility used for deserialization of packed bitstreams.
 struct BitReader<'a> {
+    /// The input packed bitstream slice being read.
     data: &'a [u8],
+    /// Current byte offset within the input data.
     byte_pos: usize,
+    /// Current bit offset within the current byte.
     bit_pos: i8,
 }
 

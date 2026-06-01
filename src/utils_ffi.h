@@ -17,18 +17,61 @@
 #ifndef THIRD_PARTY_LIBSMPTE2094_50_SRC_UTILS_FFI_H_
 #define THIRD_PARTY_LIBSMPTE2094_50_SRC_UTILS_FFI_H_
 
+#include <array>
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "libsmpte2094_50/utils_rs.h"
+#include "utils_rs_bridge/capi.h"
 
 namespace utils_rs {
 
-using ControlPoint = utils_ffi::ControlPoint;
+class ControlPoint {
+ public:
+  float x;
+  float y;
+  float m;
+
+  ControlPoint(::rust::Box<utils_ffi::ControlPoint> p)
+      : x(p->x()), y(p->y()), m(p->m()) {}
+  ControlPoint(const utils_ffi::ControlPoint& p)
+      : x(p.x()), y(p.y()), m(p.m()) {}
+  ControlPoint() : x(0), y(0), m(0) {}
+
+  ::rust::Box<utils_ffi::ControlPoint> to_ffi() const {
+    return utils_ffi::control_point_create_ffi(x, y, m);
+  }
+};
+
+class ComponentMix {
+ public:
+  std::array<float, 3> rgb;
+  float max;
+  float min;
+  float component;
+
+  ComponentMix(::rust::Box<utils_ffi::ComponentMix> m)
+      : max(m->max()), min(m->min()), component(m->component()) {
+    auto r = m->rgb();
+    rgb[0] = r[0];
+    rgb[1] = r[1];
+    rgb[2] = r[2];
+  }
+  ComponentMix(const utils_ffi::ComponentMix& m)
+      : max(m.max()), min(m.min()), component(m.component()) {
+    auto r = m.rgb();
+    rgb[0] = r[0];
+    rgb[1] = r[1];
+    rgb[2] = r[2];
+  }
+  ComponentMix() : rgb{0, 0, 0}, max(0), min(0), component(0) {}
+
+  ::rust::Box<utils_ffi::ComponentMix> to_ffi() const {
+    return utils_ffi::component_mix_create_ffi(rgb, max, min, component);
+  }
+};
 
 template <typename T>
 struct SpanWrapper {
@@ -38,307 +81,232 @@ struct SpanWrapper {
   size_t size() const { return span_.size(); }
 };
 
-class ToneMappingRule : public utils_ffi::ToneMappingRuleFfi {
+class ToneMappingRule {
  public:
-  bool owned_;
+  float alternate_hdr_headroom_log2;
+  bool use_pchip_slope;
+  ComponentMix mix;
+  std::vector<ControlPoint> curve;
 
-  ToneMappingRule() : owned_(true) {
-    alternate_hdr_headroom_log2 = 0.0f;
-    curve = nullptr;
-    curve_len = 0;
-    curve_cap = 0;
-    use_pchip_slope = false;
-    mix = utils_ffi::ComponentMix{};
-  }
-
-  ToneMappingRule(const utils_ffi::ToneMappingRuleFfi& ffi, bool owned = false)
-      : ToneMappingRuleFfi(ffi), owned_(owned) {}
-
-  ~ToneMappingRule() {
-    if (owned_) {
-      ::utils_ffi::tone_mapping_rule_free(*this);
+  ToneMappingRule(::rust::Box<utils_ffi::ToneMappingRule> r)
+      : alternate_hdr_headroom_log2(r->alternate_hdr_headroom_log2()),
+        use_pchip_slope(r->use_pchip_slope()),
+        mix(r->mix()) {
+    auto ffi_curve = r->get_curve();
+    curve.reserve(ffi_curve.size());
+    for (const auto& p : ffi_curve) {
+      curve.push_back(ControlPoint(p));
     }
-    curve = nullptr;
-    curve_len = 0;
-    curve_cap = 0;
   }
-
-  ToneMappingRule(ToneMappingRule&& other) noexcept
-      : utils_ffi::ToneMappingRuleFfi(other), owned_(other.owned_) {
-    other.owned_ = false;
-    other.curve = nullptr;
-    other.curve_len = 0;
-    other.curve_cap = 0;
-  }
-
-  ToneMappingRule& operator=(ToneMappingRule&& other) noexcept {
-    if (this != &other) {
-      if (owned_) {
-        ::utils_ffi::tone_mapping_rule_free(*this);
-      }
-      utils_ffi::ToneMappingRuleFfi::operator=(other);
-      owned_ = other.owned_;
-      other.owned_ = false;
-      other.curve = nullptr;
-      other.curve_len = 0;
-      other.curve_cap = 0;
+  ToneMappingRule(const utils_ffi::ToneMappingRule& r)
+      : alternate_hdr_headroom_log2(r.alternate_hdr_headroom_log2()),
+        use_pchip_slope(r.use_pchip_slope()),
+        mix(r.mix()) {
+    auto ffi_curve = r.get_curve();
+    curve.reserve(ffi_curve.size());
+    for (const auto& p : ffi_curve) {
+      curve.push_back(ControlPoint(p));
     }
-    return *this;
   }
+  ToneMappingRule() : alternate_hdr_headroom_log2(0), use_pchip_slope(false) {}
 
-  ToneMappingRule(const ToneMappingRule& other) = delete;
-  ToneMappingRule& operator=(const ToneMappingRule& other) = delete;
-
-  void add_point(ControlPoint point) {
-    ::utils_ffi::tone_mapping_rule_add_point_ffi(this, point);
-  }
+  void add_point(const ControlPoint& point) { curve.push_back(point); }
 
   SpanWrapper<ControlPoint> get_curve() const {
-    return SpanWrapper<ControlPoint>{absl::MakeConstSpan(curve, curve_len)};
+    return {absl::MakeConstSpan(curve.data(), curve.size())};
+  }
+
+  ::rust::Box<utils_ffi::ToneMappingRule> to_ffi() const {
+    auto r = utils_ffi::tone_mapping_rule_create_ffi();
+    r->set_alternate_hdr_headroom_log2(alternate_hdr_headroom_log2);
+    r->set_use_pchip_slope(use_pchip_slope);
+    r->set_mix(mix.to_ffi());
+    for (const auto& p : curve) {
+      r->add_point(p.to_ffi());
+    }
+    return r;
   }
 };
 
-class DynamicMetadata : public utils_ffi::DynamicMetadataFfi {
+class DynamicMetadata {
  public:
-  bool owned_;
-  mutable std::vector<ToneMappingRule> rules_;
+  bool has_adaptive_tone_map_flag;
+  bool use_reference_white_tone_mapping_flag;
+  float hdr_reference_white;
+  float baseline_hdr_headroom_log2;
+  std::array<float, 8> gain_application_space_chromaticities;
+  std::vector<ToneMappingRule> rules;
 
-  DynamicMetadata() : owned_(true) {
-    has_adaptive_tone_map_flag = false;
-    use_reference_white_tone_mapping_flag = false;
-    hdr_reference_white = 0.0f;
-    baseline_hdr_headroom_log2 = 0.0f;
-    for (int i = 0; i < 8; ++i) gain_application_space_chromaticities[i] = 0.0f;
-    rules = nullptr;
-    rules_len = 0;
-    rules_cap = 0;
-  }
-
-  DynamicMetadata(const utils_ffi::DynamicMetadataFfi& ffi, bool owned = false)
-      : utils_ffi::DynamicMetadataFfi(ffi), owned_(owned) {}
-
-  ~DynamicMetadata() {
-    if (owned_) {
-      ::utils_ffi::dynamic_metadata_free(*this);
+  DynamicMetadata(::rust::Box<utils_ffi::DynamicMetadata> m)
+      : has_adaptive_tone_map_flag(m->has_adaptive_tone_map_flag()),
+        use_reference_white_tone_mapping_flag(
+            m->use_reference_white_tone_mapping_flag()),
+        hdr_reference_white(m->hdr_reference_white()),
+        baseline_hdr_headroom_log2(m->baseline_hdr_headroom_log2()) {
+    auto chrom = m->gain_application_space_chromaticities();
+    for (int i = 0; i < 8; ++i)
+      gain_application_space_chromaticities[i] = chrom[i];
+    auto ffi_rules = m->get_rules();
+    rules.reserve(ffi_rules.size());
+    for (const auto& r : ffi_rules) {
+      rules.push_back(ToneMappingRule(r));
     }
-    rules = nullptr;
-    rules_len = 0;
-    rules_cap = 0;
   }
-
-  DynamicMetadata(DynamicMetadata&& other) noexcept
-      : utils_ffi::DynamicMetadataFfi(other), owned_(other.owned_) {
-    other.owned_ = false;
-    other.rules = nullptr;
-    other.rules_len = 0;
-    other.rules_cap = 0;
-  }
-
-  DynamicMetadata& operator=(DynamicMetadata&& other) noexcept {
-    if (this != &other) {
-      if (owned_) {
-        ::utils_ffi::dynamic_metadata_free(*this);
-      }
-      utils_ffi::DynamicMetadataFfi::operator=(other);
-      owned_ = other.owned_;
-      other.owned_ = false;
-      other.rules = nullptr;
-      other.rules_len = 0;
-      other.rules_cap = 0;
+  DynamicMetadata(const utils_ffi::DynamicMetadata& m)
+      : has_adaptive_tone_map_flag(m.has_adaptive_tone_map_flag()),
+        use_reference_white_tone_mapping_flag(
+            m.use_reference_white_tone_mapping_flag()),
+        hdr_reference_white(m.hdr_reference_white()),
+        baseline_hdr_headroom_log2(m.baseline_hdr_headroom_log2()) {
+    auto chrom = m.gain_application_space_chromaticities();
+    for (int i = 0; i < 8; ++i)
+      gain_application_space_chromaticities[i] = chrom[i];
+    auto ffi_rules = m.get_rules();
+    rules.reserve(ffi_rules.size());
+    for (const auto& r : ffi_rules) {
+      rules.push_back(ToneMappingRule(r));
     }
-    return *this;
+  }
+  DynamicMetadata()
+      : has_adaptive_tone_map_flag(false),
+        use_reference_white_tone_mapping_flag(false),
+        hdr_reference_white(0),
+        baseline_hdr_headroom_log2(0) {
+    gain_application_space_chromaticities.fill(0.0f);
   }
 
-  DynamicMetadata(const DynamicMetadata& other) = delete;
-  DynamicMetadata& operator=(const DynamicMetadata& other) = delete;
-
-  void add_rule(ToneMappingRule& rule) {
-    ::utils_ffi::dynamic_metadata_add_rule_ffi(this, rule);
-    rule.owned_ = false;
-  }
+  void add_rule(const ToneMappingRule& rule) { rules.push_back(rule); }
 
   SpanWrapper<ToneMappingRule> get_rules() const {
-    rules_.clear();
-    rules_.reserve(rules_len);
-    for (int i = 0; i < rules_len; ++i) {
-      rules_.emplace_back(rules[i], false);
+    return {absl::MakeConstSpan(rules.data(), rules.size())};
+  }
+
+  ::rust::Box<utils_ffi::DynamicMetadata> to_ffi() const {
+    auto m = utils_ffi::dynamic_metadata_create_ffi();
+    m->set_has_adaptive_tone_map_flag(has_adaptive_tone_map_flag);
+    m->set_use_reference_white_tone_mapping_flag(
+        use_reference_white_tone_mapping_flag);
+    m->set_hdr_reference_white(hdr_reference_white);
+    m->set_baseline_hdr_headroom_log2(baseline_hdr_headroom_log2);
+    m->set_gain_application_space_chromaticities(
+        gain_application_space_chromaticities);
+    for (const auto& r : rules) {
+      m->add_rule(r.to_ffi());
     }
-    return SpanWrapper<ToneMappingRule>{
-        absl::MakeConstSpan(rules_.data(), rules_.size())};
+    return m;
   }
 };
 
-class ToSt209450Result : public utils_ffi::ToSt209450ResultFfi {
+class ToSt209450Result {
  public:
-  ToSt209450Result() {
-    success = false;
-    data = nullptr;
-    data_len = 0;
-    data_cap = 0;
-    error_message = nullptr;
-  }
+  bool success;
+  ::rust::Box<utils_ffi::ToSt209450Result> res;
 
-  ToSt209450Result(const utils_ffi::ToSt209450ResultFfi& ffi)
-      : utils_ffi::ToSt209450ResultFfi(ffi) {}
+  ToSt209450Result(::rust::Box<utils_ffi::ToSt209450Result> r)
+      : success(r->success()), res(std::move(r)) {}
 
-  ~ToSt209450Result() {
-    ::utils_ffi::to_st209450_result_free(*this);
-    data = nullptr;
-    data_len = 0;
-    data_cap = 0;
-    error_message = nullptr;
-  }
+  ToSt209450Result(const ToSt209450Result& other)
+      : success(other.success), res(other.res->clone()) {}
 
-  ToSt209450Result(ToSt209450Result&& other) noexcept
-      : ToSt209450ResultFfi(other) {
-    other.data = nullptr;
-    other.data_len = 0;
-    other.data_cap = 0;
-    other.error_message = nullptr;
-  }
-
-  ToSt209450Result& operator=(ToSt209450Result&& other) noexcept {
-    if (this != &other) {
-      ::utils_ffi::to_st209450_result_free(*this);
-      ToSt209450ResultFfi::operator=(other);
-      other.data = nullptr;
-      other.data_len = 0;
-      other.data_cap = 0;
-      other.error_message = nullptr;
-    }
+  ToSt209450Result& operator=(const ToSt209450Result& other) {
+    success = other.success;
+    res = other.res->clone();
     return *this;
   }
 
-  ToSt209450Result(const ToSt209450Result& other) = delete;
-  ToSt209450Result& operator=(const ToSt209450Result& other) = delete;
-
-  SpanWrapper<uint8_t> get_data() const {
-    return SpanWrapper<uint8_t>{absl::MakeConstSpan(data, data_len)};
+  absl::Span<const uint8_t> get_data() const {
+    auto data = res->get_data();
+    return absl::MakeConstSpan(data.data(), data.size());
   }
-
   absl::string_view get_error_message() const {
-    return error_message ? absl::string_view(error_message)
-                         : absl::string_view();
+    auto s = res->get_error_message();
+    return {s.data(), s.size()};
   }
 };
 
-class FromSt209450Result : public utils_ffi::FromSt209450ResultFfi {
+class FromSt209450Result {
  public:
-  FromSt209450Result() {
-    success = false;
-    metadata = utils_ffi::DynamicMetadataFfi{};
-    error_message = nullptr;
-  }
+  bool success;
+  DynamicMetadata metadata;
+  ::rust::Box<utils_ffi::FromSt209450Result> res;
 
-  FromSt209450Result(const utils_ffi::FromSt209450ResultFfi& ffi)
-      : FromSt209450ResultFfi(ffi) {}
+  FromSt209450Result(::rust::Box<utils_ffi::FromSt209450Result> r)
+      : success(r->success()), metadata(r->metadata()), res(std::move(r)) {}
 
-  ~FromSt209450Result() {
-    ::utils_ffi::from_st209450_result_free(*this);
-    metadata.rules = nullptr;
-    metadata.rules_len = 0;
-    metadata.rules_cap = 0;
-    error_message = nullptr;
-  }
+  FromSt209450Result(const FromSt209450Result& other)
+      : success(other.success),
+        metadata(other.metadata),
+        res(other.res->clone()) {}
 
-  FromSt209450Result(FromSt209450Result&& other) noexcept
-      : FromSt209450ResultFfi(other) {
-    other.metadata.rules = nullptr;
-    other.metadata.rules_len = 0;
-    other.metadata.rules_cap = 0;
-    other.error_message = nullptr;
-  }
-
-  FromSt209450Result& operator=(FromSt209450Result&& other) noexcept {
-    if (this != &other) {
-      ::utils_ffi::from_st209450_result_free(*this);
-      FromSt209450ResultFfi::operator=(other);
-      other.metadata.rules = nullptr;
-      other.metadata.rules_len = 0;
-      other.metadata.rules_cap = 0;
-      other.error_message = nullptr;
-    }
+  FromSt209450Result& operator=(const FromSt209450Result& other) {
+    success = other.success;
+    metadata = other.metadata;
+    res = other.res->clone();
     return *this;
   }
 
-  FromSt209450Result(const FromSt209450Result& other) = delete;
-  FromSt209450Result& operator=(const FromSt209450Result& other) = delete;
-
   absl::string_view get_error_message() const {
-    return error_message ? absl::string_view(error_message)
-                         : absl::string_view();
+    auto s = res->get_error_message();
+    return {s.data(), s.size()};
   }
 };
 
-class SimpleResult : public utils_ffi::SimpleResultFfi {
+class SimpleResult {
  public:
-  SimpleResult() {
-    success = false;
-    error_message = nullptr;
-  }
+  bool success;
+  ::rust::Box<utils_ffi::SimpleResult> res;
 
-  SimpleResult(const utils_ffi::SimpleResultFfi& ffi)
-      : utils_ffi::SimpleResultFfi(ffi) {}
+  SimpleResult(::rust::Box<utils_ffi::SimpleResult> r)
+      : success(r->success()), res(std::move(r)) {}
 
-  ~SimpleResult() {
-    ::utils_ffi::simple_result_free(*this);
-    error_message = nullptr;
-  }
+  SimpleResult(const SimpleResult& other)
+      : success(other.success), res(other.res->clone()) {}
 
-  SimpleResult(SimpleResult&& other) noexcept : SimpleResultFfi(other) {
-    other.error_message = nullptr;
-  }
-
-  SimpleResult& operator=(SimpleResult&& other) noexcept {
-    if (this != &other) {
-      ::utils_ffi::simple_result_free(*this);
-      SimpleResultFfi::operator=(other);
-      other.error_message = nullptr;
-    }
+  SimpleResult& operator=(const SimpleResult& other) {
+    success = other.success;
+    res = other.res->clone();
     return *this;
   }
 
-  SimpleResult(const SimpleResult& other) = delete;
-  SimpleResult& operator=(const SimpleResult& other) = delete;
-
   absl::string_view get_error_message() const {
-    return error_message ? absl::string_view(error_message)
-                         : absl::string_view();
+    auto s = res->get_error_message();
+    return {s.data(), s.size()};
   }
 };
 
 inline ToSt209450Result to_st209450_ffi(const DynamicMetadata& metadata) {
-  utils_ffi::ToSt209450ResultFfi ffi_res =
-      ::utils_ffi::to_st209450_ffi(&metadata);
-  return ToSt209450Result(ffi_res);
+  return ToSt209450Result(utils_ffi::to_st209450_ffi(*metadata.to_ffi()));
+}
+
+inline bool is_valid_ffi(const DynamicMetadata& metadata) {
+  return utils_ffi::is_valid_ffi(*metadata.to_ffi());
 }
 
 inline FromSt209450Result from_st209450_ffi(absl::Span<const uint8_t> data) {
-  utils_ffi::FromSt209450ResultFfi ffi_res =
-      ::utils_ffi::from_st209450_ffi(data.data(), data.size());
-  return FromSt209450Result(ffi_res);
-}
-
-inline SimpleResult dynamic_metadata_populate_pchip_slopes_ffi(
-    DynamicMetadata& metadata) {
-  utils_ffi::SimpleResultFfi ffi_res =
-      ::utils_ffi::dynamic_metadata_populate_pchip_slopes_ffi(&metadata);
-  return SimpleResult(ffi_res);
+  return FromSt209450Result(utils_ffi::from_st209450_ffi(
+      ::rust::Slice<const uint8_t>(data.data(), data.size())));
 }
 
 inline SimpleResult populate_implicit_parameters_ffi(
     DynamicMetadata& metadata) {
-  utils_ffi::SimpleResultFfi ffi_res =
-      ::utils_ffi::populate_implicit_parameters_ffi(&metadata);
-  return SimpleResult(ffi_res);
+  auto ffi_m = metadata.to_ffi();
+  auto res = utils_ffi::populate_implicit_parameters_ffi(*ffi_m);
+  metadata = DynamicMetadata(*ffi_m);
+  return SimpleResult(std::move(res));
+}
+
+inline SimpleResult dynamic_metadata_populate_pchip_slopes_ffi(
+    DynamicMetadata& metadata) {
+  auto ffi_m = metadata.to_ffi();
+  auto res = utils_ffi::dynamic_metadata_populate_pchip_slopes_ffi(*ffi_m);
+  metadata = DynamicMetadata(*ffi_m);
+  return SimpleResult(std::move(res));
 }
 
 inline void dynamic_metadata_populate_using_rwtm(DynamicMetadata& metadata) {
-  ::utils_ffi::dynamic_metadata_populate_using_rwtm_ffi(&metadata);
-}
-
-inline bool is_valid_ffi(const DynamicMetadata& metadata) {
-  return ::utils_ffi::is_valid_ffi(&metadata);
+  auto ffi_m = metadata.to_ffi();
+  utils_ffi::dynamic_metadata_populate_using_rwtm_ffi(*ffi_m);
+  metadata = DynamicMetadata(*ffi_m);
 }
 
 }  // namespace utils_rs

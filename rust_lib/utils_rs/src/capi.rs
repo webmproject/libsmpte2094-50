@@ -13,416 +13,366 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Easy to C-bind wrappers.
-use crate::{ComponentMix, ControlPoint, DynamicMetadata, ToneMappingRule};
-use std::ffi::{c_char, CString};
+// CXX bridge for utils_rs.
+use crate::{
+    ComponentMix, ControlPoint, DynamicMetadata, FromSt209450Result, SimpleResult,
+    ToSt209450Result, ToneMappingRule,
+};
 
-#[derive(Clone, Copy, Default)]
-#[repr(C)]
-pub struct ToneMappingRuleFfi {
-    pub alternate_hdr_headroom_log2: f32,
-    pub curve: *mut ControlPoint,
-    pub curve_len: usize,
-    pub curve_cap: usize,
-    pub use_pchip_slope: bool,
-    pub mix: ComponentMix,
-}
+#[cxx::bridge(namespace = "utils_ffi")]
+pub mod ffi {
+    extern "Rust" {
+        type ToneMappingRule;
+        fn clone(self: &ToneMappingRule) -> Box<ToneMappingRule>;
+        #[cxx_name = "alternate_hdr_headroom_log2"]
+        fn get_rule_headroom(self: &ToneMappingRule) -> f32;
+        #[cxx_name = "set_alternate_hdr_headroom_log2"]
+        fn set_rule_headroom(self: &mut ToneMappingRule, val: f32);
+        #[cxx_name = "use_pchip_slope"]
+        fn get_rule_use_pchip(self: &ToneMappingRule) -> bool;
+        #[cxx_name = "set_use_pchip_slope"]
+        fn set_rule_use_pchip(self: &mut ToneMappingRule, val: bool);
+        #[cxx_name = "get_curve"]
+        fn get_rule_curve(self: &ToneMappingRule) -> &[ControlPoint];
+        #[cxx_name = "add_point"]
+        fn add_rule_point(self: &mut ToneMappingRule, point: Box<ControlPoint>);
+        #[cxx_name = "mix"]
+        fn get_rule_mix(self: &ToneMappingRule) -> &ComponentMix;
+        #[cxx_name = "set_mix"]
+        fn set_rule_mix(self: &mut ToneMappingRule, mix: Box<ComponentMix>);
+        #[cxx_name = "tone_mapping_rule_create_ffi"]
+        fn tone_mapping_rule_create_ffi_bridge() -> Box<ToneMappingRule>;
 
-impl ToneMappingRuleFfi {
-    pub fn get_curve(&self) -> &[ControlPoint] {
-        if self.curve.is_null() || self.curve_len == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(self.curve, self.curve_len) }
-        }
-    }
-    pub fn add_point(&mut self, point: ControlPoint) {
-        let mut vec = if self.curve.is_null() {
-            Vec::new()
-        } else {
-            unsafe { Vec::from_raw_parts(self.curve, self.curve_len, self.curve_cap) }
-        };
-        vec.push(point);
-        self.curve = vec.as_mut_ptr();
-        self.curve_len = vec.len();
-        self.curve_cap = vec.capacity();
-        std::mem::forget(vec);
-    }
-}
+        type DynamicMetadata;
+        fn clone(self: &DynamicMetadata) -> Box<DynamicMetadata>;
+        #[cxx_name = "has_adaptive_tone_map_flag"]
+        fn get_meta_adaptive(self: &DynamicMetadata) -> bool;
+        #[cxx_name = "set_has_adaptive_tone_map_flag"]
+        fn set_meta_adaptive(self: &mut DynamicMetadata, val: bool);
+        #[cxx_name = "use_reference_white_tone_mapping_flag"]
+        fn get_meta_rwtm(self: &DynamicMetadata) -> bool;
+        #[cxx_name = "set_use_reference_white_tone_mapping_flag"]
+        fn set_meta_rwtm(self: &mut DynamicMetadata, val: bool);
+        #[cxx_name = "hdr_reference_white"]
+        fn get_meta_hdr_ref(self: &DynamicMetadata) -> f32;
+        #[cxx_name = "set_hdr_reference_white"]
+        fn set_meta_hdr_ref(self: &mut DynamicMetadata, val: f32);
+        #[cxx_name = "baseline_hdr_headroom_log2"]
+        fn get_meta_baseline(self: &DynamicMetadata) -> f32;
+        #[cxx_name = "set_baseline_hdr_headroom_log2"]
+        fn set_meta_baseline(self: &mut DynamicMetadata, val: f32);
+        #[cxx_name = "gain_application_space_chromaticities"]
+        fn get_meta_chrom(self: &DynamicMetadata) -> &[f32; 8];
+        #[cxx_name = "set_gain_application_space_chromaticities"]
+        fn set_meta_chrom(self: &mut DynamicMetadata, val: &[f32; 8]);
+        #[cxx_name = "get_rules"]
+        fn get_meta_rules(self: &DynamicMetadata) -> &[ToneMappingRule];
+        #[cxx_name = "add_rule"]
+        fn add_meta_rule(self: &mut DynamicMetadata, rule: Box<ToneMappingRule>);
+        #[cxx_name = "dynamic_metadata_create_ffi"]
+        fn dynamic_metadata_create_ffi_bridge() -> Box<DynamicMetadata>;
 
-#[derive(Clone, Copy, Default)]
-#[repr(C)]
-pub struct DynamicMetadataFfi {
-    pub has_adaptive_tone_map_flag: bool,
-    pub use_reference_white_tone_mapping_flag: bool,
-    pub hdr_reference_white: f32,
-    pub baseline_hdr_headroom_log2: f32,
-    pub gain_application_space_chromaticities: [f32; 8],
-    pub rules: *mut ToneMappingRuleFfi,
-    pub rules_len: usize,
-    pub rules_cap: usize,
-}
+        type ControlPoint;
+        fn clone(self: &ControlPoint) -> Box<ControlPoint>;
+        fn x(self: &ControlPoint) -> f32;
+        fn y(self: &ControlPoint) -> f32;
+        fn m(self: &ControlPoint) -> f32;
+        #[cxx_name = "control_point_create_ffi"]
+        fn control_point_create_ffi_bridge(x: f32, y: f32, m: f32) -> Box<ControlPoint>;
+        fn control_point_ptr(pt: &ControlPoint) -> Box<ControlPoint>;
 
-impl DynamicMetadataFfi {
-    pub fn get_rules(&self) -> &[ToneMappingRuleFfi] {
-        if self.rules.is_null() || self.rules_len == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(self.rules, self.rules_len) }
-        }
-    }
-    pub fn add_rule(&mut self, rule: ToneMappingRuleFfi) {
-        let mut vec = if self.rules.is_null() {
-            Vec::new()
-        } else {
-            unsafe { Vec::from_raw_parts(self.rules, self.rules_len, self.rules_cap) }
-        };
-        vec.push(rule);
-        self.rules = vec.as_mut_ptr();
-        self.rules_len = vec.len();
-        self.rules_cap = vec.capacity();
-        std::mem::forget(vec);
-    }
-}
+        type ComponentMix;
+        fn clone(self: &ComponentMix) -> Box<ComponentMix>;
+        fn rgb(self: &ComponentMix) -> &[f32; 3];
+        fn max(self: &ComponentMix) -> f32;
+        fn min(self: &ComponentMix) -> f32;
+        fn component(self: &ComponentMix) -> f32;
+        #[cxx_name = "component_mix_create_ffi"]
+        fn component_mix_create_ffi_bridge(
+            rgb: [f32; 3],
+            max: f32,
+            min: f32,
+            component: f32,
+        ) -> Box<ComponentMix>;
+        fn component_mix_ptr(mix: &ComponentMix) -> Box<ComponentMix>;
 
-#[derive(Clone, Copy, Default)]
-#[repr(C)]
-pub struct ToSt209450ResultFfi {
-    pub success: bool,
-    pub data: *mut u8,
-    pub data_len: usize,
-    pub data_cap: usize,
-    pub error_message: *mut c_char,
-}
+        type ToSt209450Result;
+        fn clone(self: &ToSt209450Result) -> Box<ToSt209450Result>;
+        fn success(self: &ToSt209450Result) -> bool;
+        #[cxx_name = "get_data"]
+        fn to_result_data(self: &ToSt209450Result) -> &[u8];
+        #[cxx_name = "get_error_message"]
+        fn to_result_error(self: &ToSt209450Result) -> &str;
 
-impl ToSt209450ResultFfi {
-    pub fn get_data(&self) -> &[u8] {
-        if self.data.is_null() || self.data_len == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(self.data, self.data_len) }
-        }
-    }
-    pub fn get_error_message(&self) -> &str {
-        if self.error_message.is_null() {
-            ""
-        } else {
-            unsafe { std::ffi::CStr::from_ptr(self.error_message) }.to_str().unwrap_or("")
-        }
-    }
-}
+        type FromSt209450Result;
+        fn clone(self: &FromSt209450Result) -> Box<FromSt209450Result>;
+        fn success(self: &FromSt209450Result) -> bool;
+        #[cxx_name = "metadata"]
+        fn from_result_metadata(self: &FromSt209450Result) -> &DynamicMetadata;
+        #[cxx_name = "get_error_message"]
+        fn from_result_error(self: &FromSt209450Result) -> &str;
 
-#[derive(Clone, Copy, Default)]
-#[repr(C)]
-pub struct FromSt209450ResultFfi {
-    pub success: bool,
-    pub metadata: DynamicMetadataFfi,
-    pub error_message: *mut c_char,
-}
+        type SimpleResult;
+        fn clone(self: &SimpleResult) -> Box<SimpleResult>;
+        fn success(self: &SimpleResult) -> bool;
+        #[cxx_name = "get_error_message"]
+        fn simple_result_error(self: &SimpleResult) -> &str;
 
-impl FromSt209450ResultFfi {
-    pub fn get_error_message(&self) -> &str {
-        if self.error_message.is_null() {
-            ""
-        } else {
-            unsafe { std::ffi::CStr::from_ptr(self.error_message) }.to_str().unwrap_or("")
-        }
-    }
-}
+        #[cxx_name = "to_st209450_ffi"]
+        fn to_st209450_ffi_bridge(metadata: &DynamicMetadata) -> Box<ToSt209450Result>;
+        #[cxx_name = "is_valid_ffi"]
+        fn is_valid_ffi_bridge(metadata: &DynamicMetadata) -> bool;
+        #[cxx_name = "from_st209450_ffi"]
+        fn from_st209450_ffi_bridge(data: &[u8]) -> Box<FromSt209450Result>;
+        #[cxx_name = "populate_implicit_parameters_ffi"]
+        fn populate_implicit_parameters_ffi_bridge(metadata: &mut DynamicMetadata) -> Box<SimpleResult>;
+        #[cxx_name = "dynamic_metadata_populate_pchip_slopes_ffi"]
+        fn dynamic_metadata_populate_pchip_slopes_ffi_bridge(
+            metadata: &mut DynamicMetadata,
+        ) -> Box<SimpleResult>;
+        #[cxx_name = "dynamic_metadata_populate_using_rwtm_ffi"]
+        fn dynamic_metadata_populate_using_rwtm_ffi_bridge(metadata: &mut DynamicMetadata);
 
-#[derive(Clone, Copy, Default)]
-#[repr(C)]
-pub struct SimpleResultFfi {
-    pub success: bool,
-    pub error_message: *mut c_char,
-}
-
-impl SimpleResultFfi {
-    pub fn get_error_message(&self) -> &str {
-        if self.error_message.is_null() {
-            ""
-        } else {
-            unsafe { std::ffi::CStr::from_ptr(self.error_message) }.to_str().unwrap_or("")
-        }
+        fn tone_mapping_rule_ptr(rule: &ToneMappingRule) -> Box<ToneMappingRule>;
+        fn dynamic_metadata_ptr(meta: &DynamicMetadata) -> Box<DynamicMetadata>;
     }
 }
 
-impl From<ToneMappingRule> for ToneMappingRuleFfi {
-    fn from(rule: ToneMappingRule) -> Self {
-        let mut curve = rule.curve;
-        let curve_ptr = curve.as_mut_ptr();
-        let curve_len = curve.len();
-        let curve_cap = curve.capacity();
-        std::mem::forget(curve);
+pub fn tone_mapping_rule_create_ffi_bridge() -> Box<ToneMappingRule> {
+    Box::new(ToneMappingRule::default())
+}
 
+pub fn dynamic_metadata_create_ffi_bridge() -> Box<DynamicMetadata> {
+    Box::new(DynamicMetadata::default())
+}
+
+pub fn control_point_create_ffi_bridge(x: f32, y: f32, m: f32) -> Box<ControlPoint> {
+    Box::new(ControlPoint { x, y, m })
+}
+
+pub fn component_mix_create_ffi_bridge(
+    rgb: [f32; 3],
+    max: f32,
+    min: f32,
+    component: f32,
+) -> Box<ComponentMix> {
+    Box::new(ComponentMix { rgb, max, min, component })
+}
+
+pub fn control_point_ptr(pt: &ControlPoint) -> Box<ControlPoint> {
+    pt.clone()
+}
+
+pub fn component_mix_ptr(mix: &ComponentMix) -> Box<ComponentMix> {
+    mix.clone()
+}
+
+pub fn tone_mapping_rule_ptr(rule: &ToneMappingRule) -> Box<ToneMappingRule> {
+    rule.clone()
+}
+
+pub fn dynamic_metadata_ptr(meta: &DynamicMetadata) -> Box<DynamicMetadata> {
+    meta.clone()
+}
+
+pub fn to_st209450_ffi_bridge(metadata: &DynamicMetadata) -> Box<ToSt209450Result> {
+    Box::new(crate::to_st209450_ffi(metadata))
+}
+
+pub fn is_valid_ffi_bridge(metadata: &DynamicMetadata) -> bool {
+    crate::is_valid_ffi(metadata)
+}
+
+pub fn from_st209450_ffi_bridge(data: &[u8]) -> Box<FromSt209450Result> {
+    Box::new(crate::from_st209450_ffi(data))
+}
+
+pub fn populate_implicit_parameters_ffi_bridge(metadata: &mut DynamicMetadata) -> Box<SimpleResult> {
+    Box::new(crate::populate_implicit_parameters_ffi(metadata))
+}
+
+pub fn dynamic_metadata_populate_pchip_slopes_ffi_bridge(
+    metadata: &mut DynamicMetadata,
+) -> Box<SimpleResult> {
+    Box::new(crate::dynamic_metadata_populate_pchip_slopes_ffi(metadata))
+}
+
+pub fn dynamic_metadata_populate_using_rwtm_ffi_bridge(metadata: &mut DynamicMetadata) {
+    crate::dynamic_metadata_populate_using_rwtm(metadata);
+}
+
+impl ToneMappingRule {
+    fn clone(&self) -> Box<ToneMappingRule> {
+        Box::new(Clone::clone(self))
+    }
+    fn get_rule_headroom(&self) -> f32 {
+        self.alternate_hdr_headroom_log2
+    }
+    fn set_rule_headroom(&mut self, val: f32) {
+        self.alternate_hdr_headroom_log2 = val;
+    }
+    fn get_rule_use_pchip(&self) -> bool {
+        self.use_pchip_slope
+    }
+    fn set_rule_use_pchip(&mut self, val: bool) {
+        self.use_pchip_slope = val;
+    }
+    fn get_rule_curve(&self) -> &[ControlPoint] {
+        &self.curve
+    }
+    fn add_rule_point(&mut self, point: Box<ControlPoint>) {
+        self.curve.push(*point);
+    }
+    fn get_rule_mix(&self) -> &ComponentMix {
+        &self.mix
+    }
+    fn set_rule_mix(&mut self, mix: Box<ComponentMix>) {
+        self.mix = *mix;
+    }
+}
+
+impl DynamicMetadata {
+    fn clone(&self) -> Box<DynamicMetadata> {
+        Box::new(Clone::clone(self))
+    }
+    fn get_meta_adaptive(&self) -> bool {
+        self.has_adaptive_tone_map_flag
+    }
+    fn set_meta_adaptive(&mut self, val: bool) {
+        self.has_adaptive_tone_map_flag = val;
+    }
+    fn get_meta_rwtm(&self) -> bool {
+        self.use_reference_white_tone_mapping_flag
+    }
+    fn set_meta_rwtm(&mut self, val: bool) {
+        self.use_reference_white_tone_mapping_flag = val;
+    }
+    fn get_meta_hdr_ref(&self) -> f32 {
+        self.hdr_reference_white
+    }
+    fn set_meta_hdr_ref(&mut self, val: f32) {
+        self.hdr_reference_white = val;
+    }
+    fn get_meta_baseline(&self) -> f32 {
+        self.baseline_hdr_headroom_log2
+    }
+    fn set_meta_baseline(&mut self, val: f32) {
+        self.baseline_hdr_headroom_log2 = val;
+    }
+    fn get_meta_chrom(&self) -> &[f32; 8] {
+        &self.gain_application_space_chromaticities
+    }
+    fn set_meta_chrom(&mut self, val: &[f32; 8]) {
+        self.gain_application_space_chromaticities = *val;
+    }
+    fn get_meta_rules(&self) -> &[ToneMappingRule] {
+        &self.rules
+    }
+    fn add_meta_rule(&mut self, rule: Box<ToneMappingRule>) {
+        self.rules.push(*rule);
+    }
+}
+
+impl ControlPoint {
+    fn clone(&self) -> Box<ControlPoint> {
+        Box::new(Clone::clone(self))
+    }
+    fn x(&self) -> f32 {
+        self.x
+    }
+    fn y(&self) -> f32 {
+        self.y
+    }
+    fn m(&self) -> f32 {
+        self.m
+    }
+}
+
+impl ComponentMix {
+    fn clone(&self) -> Box<ComponentMix> {
+        Box::new(Clone::clone(self))
+    }
+    fn rgb(&self) -> &[f32; 3] {
+        &self.rgb
+    }
+    fn max(&self) -> f32 {
+        self.max
+    }
+    fn min(&self) -> f32 {
+        self.min
+    }
+    fn component(&self) -> f32 {
+        self.component
+    }
+}
+
+impl Clone for ToSt209450Result {
+    fn clone(&self) -> Self {
         Self {
-            alternate_hdr_headroom_log2: rule.alternate_hdr_headroom_log2,
-            curve: curve_ptr,
-            curve_len,
-            curve_cap,
-            use_pchip_slope: rule.use_pchip_slope,
-            mix: rule.mix,
+            success: self.success,
+            data: self.data.clone(),
+            error_message: self.error_message.clone(),
         }
     }
 }
 
-impl From<&ToneMappingRuleFfi> for ToneMappingRule {
-    fn from(ffi: &ToneMappingRuleFfi) -> Self {
-        let curve = if ffi.curve.is_null() || ffi.curve_len == 0 {
-            Vec::new()
-        } else {
-            unsafe { std::slice::from_raw_parts(ffi.curve, ffi.curve_len) }.to_vec()
-        };
+impl ToSt209450Result {
+    fn clone(&self) -> Box<ToSt209450Result> {
+        Box::new(Clone::clone(self))
+    }
+    fn success(&self) -> bool {
+        self.success
+    }
+    fn to_result_data(&self) -> &[u8] {
+        &self.data
+    }
+    fn to_result_error(&self) -> &str {
+        &self.error_message
+    }
+}
+
+impl Clone for FromSt209450Result {
+    fn clone(&self) -> Self {
         Self {
-            alternate_hdr_headroom_log2: ffi.alternate_hdr_headroom_log2,
-            curve,
-            use_pchip_slope: ffi.use_pchip_slope,
-            mix: ffi.mix,
+            success: self.success,
+            metadata: Clone::clone(&self.metadata),
+            error_message: self.error_message.clone(),
         }
     }
 }
 
-impl From<DynamicMetadata> for DynamicMetadataFfi {
-    fn from(meta: DynamicMetadata) -> Self {
-        let mut rules: Vec<ToneMappingRuleFfi> =
-            meta.rules.into_iter().map(ToneMappingRuleFfi::from).collect();
-        let rules_ptr = rules.as_mut_ptr();
-        let rules_len = rules.len();
-        let rules_cap = rules.capacity();
-        std::mem::forget(rules);
+impl FromSt209450Result {
+    fn clone(&self) -> Box<FromSt209450Result> {
+        Box::new(Clone::clone(self))
+    }
+    fn success(&self) -> bool {
+        self.success
+    }
+    fn from_result_metadata(&self) -> &DynamicMetadata {
+        &self.metadata
+    }
+    fn from_result_error(&self) -> &str {
+        &self.error_message
+    }
+}
 
+impl Clone for SimpleResult {
+    fn clone(&self) -> Self {
         Self {
-            has_adaptive_tone_map_flag: meta.has_adaptive_tone_map_flag,
-            use_reference_white_tone_mapping_flag: meta.use_reference_white_tone_mapping_flag,
-            hdr_reference_white: meta.hdr_reference_white,
-            baseline_hdr_headroom_log2: meta.baseline_hdr_headroom_log2,
-            gain_application_space_chromaticities: meta.gain_application_space_chromaticities,
-            rules: rules_ptr,
-            rules_len,
-            rules_cap,
+            success: self.success,
+            error_message: self.error_message.clone(),
         }
     }
 }
 
-impl From<&DynamicMetadataFfi> for DynamicMetadata {
-    fn from(ffi: &DynamicMetadataFfi) -> Self {
-        let rules_ffi = if ffi.rules.is_null() || ffi.rules_len == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(ffi.rules, ffi.rules_len) }
-        };
-        let rules = rules_ffi.iter().map(ToneMappingRule::from).collect();
-        Self {
-            has_adaptive_tone_map_flag: ffi.has_adaptive_tone_map_flag,
-            use_reference_white_tone_mapping_flag: ffi.use_reference_white_tone_mapping_flag,
-            hdr_reference_white: ffi.hdr_reference_white,
-            baseline_hdr_headroom_log2: ffi.baseline_hdr_headroom_log2,
-            gain_application_space_chromaticities: ffi.gain_application_space_chromaticities,
-            rules,
-        }
+impl SimpleResult {
+    fn clone(&self) -> Box<SimpleResult> {
+        Box::new(Clone::clone(self))
     }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn dynamic_metadata_free(metadata: DynamicMetadataFfi) {
-    if !metadata.rules.is_null() {
-        unsafe {
-            let rules = Vec::from_raw_parts(metadata.rules, metadata.rules_len, metadata.rules_cap);
-            for rule in rules {
-                tone_mapping_rule_free(rule);
-            }
-        }
+    fn success(&self) -> bool {
+        self.success
     }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn tone_mapping_rule_free(rule: ToneMappingRuleFfi) {
-    if !rule.curve.is_null() {
-        unsafe {
-            let _ = Vec::from_raw_parts(rule.curve, rule.curve_len, rule.curve_cap);
-        }
+    fn simple_result_error(&self) -> &str {
+        &self.error_message
     }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn to_st209450_result_free(res: ToSt209450ResultFfi) {
-    if !res.data.is_null() {
-        unsafe {
-            let _ = Vec::from_raw_parts(res.data, res.data_len, res.data_cap);
-        }
-    }
-    if !res.error_message.is_null() {
-        unsafe {
-            let _ = std::ffi::CString::from_raw(res.error_message);
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn from_st209450_result_free(res: FromSt209450ResultFfi) {
-    dynamic_metadata_free(res.metadata);
-    if !res.error_message.is_null() {
-        unsafe {
-            let _ = std::ffi::CString::from_raw(res.error_message);
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn simple_result_free(res: SimpleResultFfi) {
-    if !res.error_message.is_null() {
-        unsafe {
-            let _ = std::ffi::CString::from_raw(res.error_message);
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn to_st209450_ffi(metadata: &DynamicMetadataFfi) -> ToSt209450ResultFfi {
-    let meta = DynamicMetadata::from(metadata);
-    match meta.to_st2094_50() {
-        Ok(data) => {
-            let mut vec = data;
-            let ptr = vec.as_mut_ptr();
-            let len = vec.len();
-            let cap = vec.capacity();
-            std::mem::forget(vec);
-            ToSt209450ResultFfi {
-                success: true,
-                data: ptr,
-                data_len: len,
-                data_cap: cap,
-                error_message: std::ptr::null_mut(),
-            }
-        }
-        Err(e) => ToSt209450ResultFfi {
-            success: false,
-            data: std::ptr::null_mut(),
-            data_len: 0,
-            data_cap: 0,
-            error_message: CString::new(e).unwrap().into_raw(),
-        },
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn is_valid_ffi(metadata: &DynamicMetadataFfi) -> bool {
-    let meta = DynamicMetadata::from(metadata);
-    meta.is_valid()
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn from_st209450_ffi(data: *const u8, data_len: usize) -> FromSt209450ResultFfi {
-    let data_slice = if data.is_null() || data_len == 0 {
-        &[]
-    } else {
-        unsafe { std::slice::from_raw_parts(data, data_len) }
-    };
-    match DynamicMetadata::from_st2094_50(data_slice) {
-        Ok(metadata) => FromSt209450ResultFfi {
-            success: true,
-            metadata: DynamicMetadataFfi::from(metadata),
-            error_message: std::ptr::null_mut(),
-        },
-        Err(e) => FromSt209450ResultFfi {
-            success: false,
-            metadata: DynamicMetadataFfi {
-                has_adaptive_tone_map_flag: false,
-                use_reference_white_tone_mapping_flag: false,
-                hdr_reference_white: 0.0,
-                baseline_hdr_headroom_log2: 0.0,
-                gain_application_space_chromaticities: [0.0; 8],
-                rules: std::ptr::null_mut(),
-                rules_len: 0,
-                rules_cap: 0,
-            },
-            error_message: CString::new(e).unwrap().into_raw(),
-        },
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn populate_implicit_parameters_ffi(
-    metadata: &mut DynamicMetadataFfi,
-) -> SimpleResultFfi {
-    let mut meta = DynamicMetadata::from(&*metadata);
-    let res = meta.populate_implicit_parameters();
-    let new_ffi = DynamicMetadataFfi::from(meta);
-    dynamic_metadata_free(std::mem::replace(metadata, new_ffi));
-    match res {
-        Ok(_) => SimpleResultFfi { success: true, error_message: std::ptr::null_mut() },
-        Err(e) => {
-            SimpleResultFfi { success: false, error_message: CString::new(e).unwrap().into_raw() }
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn dynamic_metadata_populate_pchip_slopes_ffi(
-    metadata: &mut DynamicMetadataFfi,
-) -> SimpleResultFfi {
-    let mut meta = DynamicMetadata::from(&*metadata);
-    let res = meta.populate_pchip_slopes();
-    let new_ffi = DynamicMetadataFfi::from(meta);
-    dynamic_metadata_free(std::mem::replace(metadata, new_ffi));
-    match res {
-        Ok(_) => SimpleResultFfi { success: true, error_message: std::ptr::null_mut() },
-        Err(e) => {
-            SimpleResultFfi { success: false, error_message: CString::new(e).unwrap().into_raw() }
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn dynamic_metadata_populate_using_rwtm_ffi(metadata: &mut DynamicMetadataFfi) {
-    let mut meta = DynamicMetadata::from(&*metadata);
-    meta.populate_using_rwtm();
-    let new_ffi = DynamicMetadataFfi::from(meta);
-    dynamic_metadata_free(std::mem::replace(metadata, new_ffi));
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn dynamic_metadata_get_rules_ffi(
-    metadata: &DynamicMetadataFfi,
-) -> *const ToneMappingRuleFfi {
-    metadata.rules
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn dynamic_metadata_get_rules_len_ffi(metadata: &DynamicMetadataFfi) -> usize {
-    metadata.rules_len
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn dynamic_metadata_add_rule_ffi(
-    metadata: &mut DynamicMetadataFfi,
-    rule: ToneMappingRuleFfi,
-) {
-    metadata.add_rule(rule);
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn tone_mapping_rule_is_valid_ffi(rule: &ToneMappingRuleFfi) -> bool {
-    let r = ToneMappingRule::from(rule);
-    r.is_valid()
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn tone_mapping_rule_get_curve_ffi(
-    rule: &ToneMappingRuleFfi,
-) -> *const ControlPoint {
-    rule.curve
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn tone_mapping_rule_get_curve_len_ffi(rule: &ToneMappingRuleFfi) -> usize {
-    rule.curve_len
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn tone_mapping_rule_add_point_ffi(
-    rule: &mut ToneMappingRuleFfi,
-    point: ControlPoint,
-) {
-    rule.add_point(point);
 }

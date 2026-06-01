@@ -16,7 +16,7 @@
 // Basic types, according to SMPTE ST 2094-50.
 // Serialization and deserialization functions are also provided.
 use std::f32::consts::PI;
-#[cfg(not(feature = "cbindgen"))]
+#[cfg(not(feature = "cxxbridge"))]
 google3::import! {
     "//third_party/libsmpte2094_50:pchip_rs";
 }
@@ -210,7 +210,6 @@ impl ToSt209450Result {
 }
 
 /// Foreign function interface wrapper for `DynamicMetadata::to_st2094_50`.
-#[cfg(not(feature = "cbindgen"))]
 pub fn to_st209450_ffi(metadata: &DynamicMetadata) -> ToSt209450Result {
     match metadata.to_st2094_50() {
         Ok(data) => ToSt209450Result { success: true, data, error_message: String::new() },
@@ -219,14 +218,13 @@ pub fn to_st209450_ffi(metadata: &DynamicMetadata) -> ToSt209450Result {
 }
 
 /// Foreign function interface wrapper for `DynamicMetadata::is_valid`.
-#[cfg(not(feature = "cbindgen"))]
 pub fn is_valid_ffi(metadata: &DynamicMetadata) -> bool {
     metadata.is_valid()
 }
 
-#[cfg(feature = "cbindgen")]
+#[cfg(feature = "cxxbridge")]
 pub mod capi;
-#[cfg(feature = "cbindgen")]
+#[cfg(feature = "cxxbridge")]
 #[allow(unused_imports)]
 pub use capi::*;
 
@@ -249,7 +247,6 @@ impl FromSt209450Result {
 }
 
 /// Foreign function interface wrapper for `DynamicMetadata::from_st2094_50`.
-#[cfg(not(feature = "cbindgen"))]
 pub fn from_st209450_ffi(data: &[u8]) -> FromSt209450Result {
     match DynamicMetadata::from_st2094_50(data) {
         Ok(metadata) => {
@@ -287,13 +284,11 @@ pub fn to_simple_result(result: Result<(), String>) -> SimpleResult {
 }
 
 /// Foreign function interface wrapper for `DynamicMetadata::populate_implicit_parameters`.
-#[cfg(not(feature = "cbindgen"))]
 pub fn populate_implicit_parameters_ffi(metadata: &mut DynamicMetadata) -> SimpleResult {
     to_simple_result(metadata.populate_implicit_parameters())
 }
 
 /// Foreign function interface wrapper for `DynamicMetadata::populate_pchip_slopes`.
-#[cfg(not(feature = "cbindgen"))]
 pub fn dynamic_metadata_populate_pchip_slopes_ffi(metadata: &mut DynamicMetadata) -> SimpleResult {
     to_simple_result(metadata.populate_pchip_slopes())
 }
@@ -950,7 +945,7 @@ impl<'a> BitReader<'a> {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "cbindgen"))]
+    #[cfg(not(feature = "cxxbridge"))]
     google3::import! {
         "//third_party/gtest_rust/googletest";
     }

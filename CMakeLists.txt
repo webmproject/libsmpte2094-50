@@ -29,7 +29,6 @@ include(FetchContent)
 # Install dependencies.
 set(SMPTE2094_ABSL_GIT_TAG 20260107.1)
 set(SMPTE2094_CORROSION_GIT_TAG v0.6.1)
-set(SMPTE2094_CBINDGEN_GIT_TAG v0.29.3)
 
 FetchContent_Declare(
   abseil-cpp
@@ -47,61 +46,13 @@ FetchContent_Declare(
   GIT_SHALLOW ON)
 FetchContent_MakeAvailable(Corrosion)
 
-# Install cbindgen.
-find_program(
-  CBINDGEN cbindgen
-  HINTS "$ENV{HOME}/.cargo/bin"
-  HINTS ${CMAKE_BINARY_DIR})
-
-if(CBINDGEN)
-  add_executable(cbindgen IMPORTED GLOBAL)
-  set_property(TARGET cbindgen PROPERTY IMPORTED_LOCATION ${CBINDGEN})
-endif()
-
-if(NOT TARGET cbindgen)
-  FetchContent_Declare(
-    cbindgen_repo
-    EXCLUDE_FROM_ALL
-    GIT_REPOSITORY https://github.com/mozilla/cbindgen.git
-    GIT_TAG ${SMPTE2094_CBINDGEN_GIT_TAG}
-    GIT_SHALLOW ON)
-  FetchContent_MakeAvailable(cbindgen_repo)
-
-  corrosion_import_crate(MANIFEST_PATH ${cbindgen_repo_SOURCE_DIR}/Cargo.toml
-                         PROFILE release)
-
-  set(CBINDGEN $<TARGET_FILE:cbindgen>)
-endif()
-
-set(GENERATED_HEADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated_headers")
-set(TARGET_INCLUDE_SUBDIR "${GENERATED_HEADERS_DIR}/libsmpte2094_50")
-file(MAKE_DIRECTORY ${TARGET_INCLUDE_SUBDIR})
-
-add_custom_target(
-  smpte2094_50_generated_headers
-  COMMAND
-    ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/rust_lib
-    ${CMAKE_CURRENT_BINARY_DIR}/cbindgen_src
-  COMMAND sed -i.bak "s/unsafe(no_mangle)/no_mangle/g"
-          ${CMAKE_CURRENT_BINARY_DIR}/cbindgen_src/pchip_rs/src/capi.rs
-  COMMAND sed -i.bak "s/unsafe(no_mangle)/no_mangle/g"
-          ${CMAKE_CURRENT_BINARY_DIR}/cbindgen_src/utils_rs/src/capi.rs
-  COMMAND
-    ${CBINDGEN} --config
-    ${CMAKE_CURRENT_BINARY_DIR}/cbindgen_src/pchip_rs/cbindgen.toml --crate
-    pchip_rs --output ${TARGET_INCLUDE_SUBDIR}/pchip_rs.h
-    ${CMAKE_CURRENT_BINARY_DIR}/cbindgen_src/pchip_rs
-  COMMAND
-    ${CBINDGEN} --config
-    ${CMAKE_CURRENT_BINARY_DIR}/cbindgen_src/utils_rs/cbindgen.toml --crate
-    utils_rs --output ${TARGET_INCLUDE_SUBDIR}/utils_rs.h
-    ${CMAKE_CURRENT_BINARY_DIR}/cbindgen_src/utils_rs
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  VERBATIM)
-
-# Compile the Rust Library.
+# Compile the Rust Library and CXX bridges.
 corrosion_import_crate(MANIFEST_PATH
                        ${CMAKE_CURRENT_SOURCE_DIR}/rust_lib/Cargo.toml)
+
+corrosion_add_cxxbridge(pchip_rs_bridge CRATE pchip_rs FILES capi.rs)
+
+corrosion_add_cxxbridge(utils_rs_bridge CRATE utils_rs FILES capi.rs)
 
 add_custom_target(
   generate_include_links ALL
@@ -125,8 +76,7 @@ target_include_directories(
                          $<INSTALL_INTERFACE:include>)
 
 add_library(smpte2094_50_utils src/utils.cc include/smpte2094_50/utils.h)
-add_dependencies(smpte2094_50_utils smpte2094_50_generated_headers
-                 generate_include_links)
+add_dependencies(smpte2094_50_utils generate_include_links)
 
 target_link_libraries(
   smpte2094_50_utils
@@ -135,12 +85,11 @@ target_link_libraries(
          absl::strings
          absl::span
          smpte2094_50
-         pchip_rs
-         utils_rs)
+         pchip_rs_bridge
+         utils_rs_bridge)
 target_include_directories(
   smpte2094_50_utils
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-         $<BUILD_INTERFACE:${GENERATED_HEADERS_DIR}>
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/virtual_includes>
          $<INSTALL_INTERFACE:include>)
 

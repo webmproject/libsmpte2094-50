@@ -53,7 +53,6 @@ impl PchipSlopesResult {
 }
 
 /// FFI wrapper for `pchip_slopes`, returning a `PchipSlopesResult` for C/C++ interoperability.
-#[cfg(not(feature = "cbindgen"))]
 pub fn pchip_slopes_ffi(x: &[f32], y: &[f32]) -> PchipSlopesResult {
     match pchip_slopes(x, y) {
         Ok(slopes) => PchipSlopesResult { slopes, success: true, error_message: String::new() },
@@ -61,9 +60,9 @@ pub fn pchip_slopes_ffi(x: &[f32], y: &[f32]) -> PchipSlopesResult {
     }
 }
 
-#[cfg(feature = "cbindgen")]
+#[cfg(feature = "cxxbridge")]
 pub mod capi;
-#[cfg(feature = "cbindgen")]
+#[cfg(feature = "cxxbridge")]
 #[allow(unused_imports)]
 pub use capi::*;
 
@@ -505,7 +504,6 @@ pub fn sub_sample_dist(x: &[f32], y: &[f32], n_break: usize) -> Result<Vec<usize
 }
 
 /// FFI wrapper for `create_subsampled_pchip`, returning a `PchipInterpolatorResult`.
-#[cfg(not(feature = "cbindgen"))]
 pub fn create_subsampled_pchip_ffi(
     x: &[f32],
     y: &[f32],
@@ -560,11 +558,6 @@ pub fn create_subsampled_pchip(
 
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "cbindgen"))]
-    google3::import! {
-        "//third_party/gtest_rust/googletest";
-    }
-
     use super::*;
     use googletest::prelude::*;
 

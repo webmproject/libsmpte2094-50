@@ -21,12 +21,31 @@
 #include <cstdint>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "libsmpte2094_50/pchip_rs.h"
+#include "pchip_rs_bridge/capi.h"
 
 namespace pchip_rs {
 
-using ReverseInterpolateResult = pchip_ffi::ReverseInterpolateResult;
+class ReverseInterpolateResult {
+ public:
+  float xi;
+  bool success;
+  ::rust::Box<pchip_ffi::ReverseInterpolateResult> res;
+
+  ReverseInterpolateResult(::rust::Box<pchip_ffi::ReverseInterpolateResult> r)
+      : xi(r->xi()), success(r->success()), res(std::move(r)) {}
+
+  ReverseInterpolateResult(const ReverseInterpolateResult& other)
+      : xi(other.xi), success(other.success), res(other.res->clone()) {}
+
+  ReverseInterpolateResult& operator=(const ReverseInterpolateResult& other) {
+    xi = other.xi;
+    success = other.success;
+    res = other.res->clone();
+    return *this;
+  }
+};
 
 template <typename T>
 struct SpanWrapper {
@@ -36,56 +55,72 @@ struct SpanWrapper {
   size_t size() const { return span_.size(); }
 };
 
-class PchipSlopesResult : public pchip_ffi::PchipSlopesResultFfi {
+class PchipSlopesResult {
  public:
-  PchipSlopesResult() = default;
-  PchipSlopesResult(const pchip_ffi::PchipSlopesResultFfi& ffi)
-      : PchipSlopesResultFfi(ffi) {}
-  ~PchipSlopesResult() {
-    ::pchip_ffi::pchip_slopes_result_free(*this);
-    slopes = nullptr;
-    slopes_len = 0;
-    success = false;
-    error_message = nullptr;
+  bool success;
+  ::rust::Box<pchip_ffi::PchipSlopesResult> res;
+
+  PchipSlopesResult(::rust::Box<pchip_ffi::PchipSlopesResult> r)
+      : success(r->success()), res(std::move(r)) {}
+
+  PchipSlopesResult(const PchipSlopesResult& other)
+      : success(other.success), res(other.res->clone()) {}
+
+  PchipSlopesResult& operator=(const PchipSlopesResult& other) {
+    success = other.success;
+    res = other.res->clone();
+    return *this;
   }
 
   SpanWrapper<float> get_slopes() const {
-    return SpanWrapper<float>{absl::MakeConstSpan(slopes, slopes_len)};
+    auto slice = res->get_slopes();
+    return {absl::MakeConstSpan(slice.data(), slice.size())};
+  }
+  absl::string_view get_error_message() const {
+    auto s = res->get_error_message();
+    return {s.data(), s.size()};
   }
 };
 
 class PchipInterpolatorResult;
 
-class PchipInterpolator : public pchip_ffi::PchipInterpolatorFfi {
+class PchipInterpolator {
  public:
-  PchipInterpolator() = default;
-  PchipInterpolator(const pchip_ffi::PchipInterpolatorFfi& ffi)
-      : PchipInterpolatorFfi(ffi) {}
+  ::rust::Box<pchip_ffi::PchipInterpolator> interp;
+
+  PchipInterpolator(::rust::Box<pchip_ffi::PchipInterpolator> i)
+      : interp(std::move(i)) {}
+
+  PchipInterpolator(const PchipInterpolator& other)
+      : interp(other.interp->clone()) {}
+
+  PchipInterpolator& operator=(const PchipInterpolator& other) {
+    interp = other.interp->clone();
+    return *this;
+  }
 
   static PchipInterpolatorResult create_ffi(absl::Span<const float> x,
                                             absl::Span<const float> y);
 
-  float interpolate(float xi) const {
-    return ::pchip_ffi::pchip_interpolator_interpolate_ffi(this, xi);
-  }
+  float interpolate(float xi) const { return interp->interpolate(xi); }
 
   ReverseInterpolateResult reverse_interpolate(float yi) const {
-    return ::pchip_ffi::pchip_interpolator_reverse_interpolate_ffi(this, yi);
+    return ReverseInterpolateResult(interp->reverse_interpolate(yi));
   }
 
   SpanWrapper<float> x() const {
-    return SpanWrapper<float>{
-        absl::MakeConstSpan(PchipInterpolatorFfi::x, x_len)};
+    auto slice = interp->x();
+    return {absl::MakeConstSpan(slice.data(), slice.size())};
   }
 
   SpanWrapper<float> y() const {
-    return SpanWrapper<float>{
-        absl::MakeConstSpan(PchipInterpolatorFfi::y, y_len)};
+    auto slice = interp->y();
+    return {absl::MakeConstSpan(slice.data(), slice.size())};
   }
 
   SpanWrapper<float> slopes() const {
-    return SpanWrapper<float>{
-        absl::MakeConstSpan(PchipInterpolatorFfi::slopes, slopes_len)};
+    auto slice = interp->slopes();
+    return {absl::MakeConstSpan(slice.data(), slice.size())};
   }
 };
 
@@ -93,40 +128,56 @@ class PchipInterpolatorResult {
  public:
   PchipInterpolator interp;
   bool success;
-  char* error_message;
+  ::rust::Box<pchip_ffi::PchipInterpolatorResult> res;
 
-  PchipInterpolatorResult() = default;
-  PchipInterpolatorResult(const pchip_ffi::PchipInterpolatorResultFfi& ffi) {
-    interp = PchipInterpolator(ffi.interp);
-    success = ffi.success;
-    error_message = ffi.error_message;
+  PchipInterpolatorResult(::rust::Box<pchip_ffi::PchipInterpolatorResult> r)
+      : interp(r->interp()), success(r->success()), res(std::move(r)) {}
+
+  PchipInterpolatorResult(const PchipInterpolatorResult& other)
+      : interp(other.interp), success(other.success), res(other.res->clone()) {}
+
+  PchipInterpolatorResult& operator=(const PchipInterpolatorResult& other) {
+    interp = other.interp;
+    success = other.success;
+    res = other.res->clone();
+    return *this;
+  }
+
+  absl::string_view get_error_message() const {
+    auto s = res->get_error_message();
+    return {s.data(), s.size()};
   }
 };
 
 inline PchipInterpolatorResult PchipInterpolator::create_ffi(
     absl::Span<const float> x, absl::Span<const float> y) {
-  pchip_ffi::PchipInterpolatorResultFfi ffi_res =
-      ::pchip_ffi::pchip_interpolator_create_ffi(x.data(), x.size(), y.data(),
-                                                 y.size());
-  return PchipInterpolatorResult(ffi_res);
+  return PchipInterpolatorResult(pchip_ffi::pchip_interpolator_create_ffi(
+      ::rust::Slice<const float>(x.data(), x.size()),
+      ::rust::Slice<const float>(y.data(), y.size())));
 }
 
 class GainCurveResult;
 
-class GainCurve : public pchip_ffi::GainCurveFfi {
+class GainCurve {
  public:
-  GainCurve() = default;
-  GainCurve(const pchip_ffi::GainCurveFfi& ffi) : GainCurveFfi(ffi) {}
+  ::rust::Box<pchip_ffi::GainCurve> curve;
+
+  GainCurve(::rust::Box<pchip_ffi::GainCurve> c) : curve(std::move(c)) {}
+
+  GainCurve(const GainCurve& other) : curve(other.curve->clone()) {}
+
+  GainCurve& operator=(const GainCurve& other) {
+    curve = other.curve->clone();
+    return *this;
+  }
 
   static GainCurveResult create_ffi(absl::Span<const float> x,
                                     absl::Span<const float> y);
 
-  float interpolate(float xi) const {
-    return ::pchip_ffi::gain_curve_interpolate_ffi(this, xi);
-  }
+  float interpolate(float xi) const { return curve->interpolate(xi); }
 
   ReverseInterpolateResult reverse_interpolate(float yi) const {
-    return ::pchip_ffi::gain_curve_reverse_interpolate_ffi(this, yi);
+    return ReverseInterpolateResult(curve->reverse_interpolate(yi));
   }
 };
 
@@ -134,37 +185,47 @@ class GainCurveResult {
  public:
   GainCurve curve;
   bool success;
-  char* error_message;
+  ::rust::Box<pchip_ffi::GainCurveResult> res;
 
-  GainCurveResult() = default;
-  GainCurveResult(const pchip_ffi::GainCurveResultFfi& ffi) {
-    curve = GainCurve(ffi.curve);
-    success = ffi.success;
-    error_message = ffi.error_message;
+  GainCurveResult(::rust::Box<pchip_ffi::GainCurveResult> r)
+      : curve(r->curve()), success(r->success()), res(std::move(r)) {}
+
+  GainCurveResult(const GainCurveResult& other)
+      : curve(other.curve), success(other.success), res(other.res->clone()) {}
+
+  GainCurveResult& operator=(const GainCurveResult& other) {
+    curve = other.curve;
+    success = other.success;
+    res = other.res->clone();
+    return *this;
+  }
+
+  absl::string_view get_error_message() const {
+    auto s = res->get_error_message();
+    return {s.data(), s.size()};
   }
 };
 
 inline GainCurveResult GainCurve::create_ffi(absl::Span<const float> x,
                                              absl::Span<const float> y) {
-  pchip_ffi::GainCurveResultFfi ffi_res = ::pchip_ffi::gain_curve_create_ffi(
-      x.data(), x.size(), y.data(), y.size());
-  return GainCurveResult(ffi_res);
+  return GainCurveResult(pchip_ffi::gain_curve_create_ffi(
+      ::rust::Slice<const float>(x.data(), x.size()),
+      ::rust::Slice<const float>(y.data(), y.size())));
 }
 
 inline PchipSlopesResult pchip_slopes_ffi(absl::Span<const float> x,
                                           absl::Span<const float> y) {
-  pchip_ffi::PchipSlopesResultFfi ffi_res =
-      ::pchip_ffi::pchip_slopes_ffi(x.data(), x.size(), y.data(), y.size());
-  return PchipSlopesResult(ffi_res);
+  return PchipSlopesResult(pchip_ffi::pchip_slopes_ffi(
+      ::rust::Slice<const float>(x.data(), x.size()),
+      ::rust::Slice<const float>(y.data(), y.size())));
 }
 
 inline PchipInterpolatorResult create_subsampled_pchip_ffi(
     absl::Span<const float> x, absl::Span<const float> y,
     size_t num_control_points) {
-  pchip_ffi::PchipInterpolatorResultFfi ffi_res =
-      ::pchip_ffi::create_subsampled_pchip_ffi(x.data(), x.size(), y.data(),
-                                               y.size(), num_control_points);
-  return PchipInterpolatorResult(ffi_res);
+  return PchipInterpolatorResult(pchip_ffi::create_subsampled_pchip_ffi(
+      ::rust::Slice<const float>(x.data(), x.size()),
+      ::rust::Slice<const float>(y.data(), y.size()), num_control_points));
 }
 
 }  // namespace pchip_rs

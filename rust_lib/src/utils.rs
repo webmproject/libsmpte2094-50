@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,11 +16,7 @@
 // Basic types, according to SMPTE ST 2094-50.
 // Serialization and deserialization functions are also provided.
 use std::f32::consts::PI;
-#[cfg(not(feature = "cxxbridge"))]
-google3::import! {
-    "//third_party/libsmpte2094_50:pchip_rs";
-}
-use pchip_rs::pchip_slopes;
+use crate::pchip::pchip_slopes;
 
 const NUM_MIX_PARAMS: usize = 6;
 const MIX_PARAM_SCALE: f32 = 50000.0;
@@ -222,11 +218,7 @@ pub fn is_valid_ffi(metadata: &DynamicMetadata) -> bool {
     metadata.is_valid()
 }
 
-#[cfg(feature = "cxxbridge")]
-pub mod capi;
-#[cfg(feature = "cxxbridge")]
-#[allow(unused_imports)]
-pub use capi::*;
+
 
 /// Result of a SMPTE ST 2094-50 deserialization for C++ wrapping, containing the parsed metadata or an error message.
 #[repr(C)]
@@ -945,11 +937,6 @@ impl<'a> BitReader<'a> {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "cxxbridge"))]
-    google3::import! {
-        "//third_party/gtest_rust/googletest";
-    }
-
     use super::*;
     use googletest::prelude::*;
 

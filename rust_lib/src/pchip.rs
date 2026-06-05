@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,11 +60,7 @@ pub fn pchip_slopes_ffi(x: &[f32], y: &[f32]) -> PchipSlopesResult {
     }
 }
 
-#[cfg(feature = "cxxbridge")]
-pub mod capi;
-#[cfg(feature = "cxxbridge")]
-#[allow(unused_imports)]
-pub use capi::*;
+
 
 /// Computes the slopes for a piecewise cubic interpolator with the given control points.
 ///

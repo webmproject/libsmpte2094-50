@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 // CXX bridge for utils_rs.
-use crate::{
+use crate::utils::{
     ComponentMix, ControlPoint, DynamicMetadata, FromSt209450Result, SimpleResult,
     ToSt209450Result, ToneMappingRule,
+    to_st209450_ffi, is_valid_ffi, from_st209450_ffi, populate_implicit_parameters_ffi,
+    dynamic_metadata_populate_pchip_slopes_ffi, dynamic_metadata_populate_using_rwtm,
 };
 
 #[cxx::bridge(namespace = "utils_ffi")]
@@ -176,29 +178,29 @@ pub fn dynamic_metadata_ptr(meta: &DynamicMetadata) -> Box<DynamicMetadata> {
 }
 
 pub fn to_st209450_ffi_bridge(metadata: &DynamicMetadata) -> Box<ToSt209450Result> {
-    Box::new(crate::to_st209450_ffi(metadata))
+    Box::new(to_st209450_ffi(metadata))
 }
 
 pub fn is_valid_ffi_bridge(metadata: &DynamicMetadata) -> bool {
-    crate::is_valid_ffi(metadata)
+    is_valid_ffi(metadata)
 }
 
 pub fn from_st209450_ffi_bridge(data: &[u8]) -> Box<FromSt209450Result> {
-    Box::new(crate::from_st209450_ffi(data))
+    Box::new(from_st209450_ffi(data))
 }
 
 pub fn populate_implicit_parameters_ffi_bridge(metadata: &mut DynamicMetadata) -> Box<SimpleResult> {
-    Box::new(crate::populate_implicit_parameters_ffi(metadata))
+    Box::new(populate_implicit_parameters_ffi(metadata))
 }
 
 pub fn dynamic_metadata_populate_pchip_slopes_ffi_bridge(
     metadata: &mut DynamicMetadata,
 ) -> Box<SimpleResult> {
-    Box::new(crate::dynamic_metadata_populate_pchip_slopes_ffi(metadata))
+    Box::new(dynamic_metadata_populate_pchip_slopes_ffi(metadata))
 }
 
 pub fn dynamic_metadata_populate_using_rwtm_ffi_bridge(metadata: &mut DynamicMetadata) {
-    crate::dynamic_metadata_populate_using_rwtm(metadata);
+    dynamic_metadata_populate_using_rwtm(metadata);
 }
 
 impl ToneMappingRule {

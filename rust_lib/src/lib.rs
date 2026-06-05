@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +14,10 @@
  * limitations under the License.
  */
 // Basic lib for SMPTE ST 2094-50.
-pub use pchip_rs as pchip;
-pub use utils_rs as utils;
+pub mod pchip;
+pub mod utils;
+
+#[cfg(feature = "cxxbridge")]
+pub mod pchip_ffi;
+#[cfg(feature = "cxxbridge")]
+pub mod utils_ffi;

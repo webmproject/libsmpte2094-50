@@ -50,9 +50,11 @@ FetchContent_MakeAvailable(Corrosion)
 corrosion_import_crate(MANIFEST_PATH
                        ${CMAKE_CURRENT_SOURCE_DIR}/rust_lib/Cargo.toml)
 
-corrosion_add_cxxbridge(pchip_rs_bridge CRATE pchip_rs FILES capi.rs)
+corrosion_add_cxxbridge(pchip_rs_bridge CRATE libsmpte2094_50 FILES
+                        pchip_ffi.rs)
 
-corrosion_add_cxxbridge(utils_rs_bridge CRATE utils_rs FILES capi.rs)
+corrosion_add_cxxbridge(utils_rs_bridge CRATE libsmpte2094_50 FILES
+                        utils_ffi.rs)
 
 add_custom_target(
   generate_include_links ALL

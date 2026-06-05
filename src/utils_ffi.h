@@ -24,7 +24,7 @@
 
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "utils_rs_bridge/capi.h"
+#include "utils_rs_bridge/utils_ffi.h"
 
 namespace utils_rs {
 

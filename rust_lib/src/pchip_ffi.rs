@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 // CXX bridge for pchip_rs.
-use crate::{
+use crate::pchip::{
     create_subsampled_pchip, GainCurve, GainCurveResult, PchipInterpolator,
     PchipInterpolatorResult, PchipSlopesResult, ReverseInterpolateResult,
+    pchip_slopes_ffi,
 };
 
 #[cxx::bridge(namespace = "pchip_ffi")]
@@ -92,7 +93,7 @@ pub mod ffi {
 }
 
 pub fn pchip_slopes_ffi_bridge(x: &[f32], y: &[f32]) -> Box<PchipSlopesResult> {
-    Box::new(crate::pchip_slopes_ffi(x, y))
+    Box::new(pchip_slopes_ffi(x, y))
 }
 
 pub fn create_subsampled_pchip_ffi_bridge(

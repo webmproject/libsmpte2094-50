@@ -23,7 +23,7 @@
 
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
-#include "pchip_rs_bridge/capi.h"
+#include "pchip_rs_bridge/pchip_ffi.h"
 
 namespace pchip_rs {
 

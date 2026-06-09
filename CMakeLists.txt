@@ -77,7 +77,8 @@ target_include_directories(
   smpte2094_50 INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
                          $<INSTALL_INTERFACE:include>)
 
-add_library(smpte2094_50_utils src/utils.cc include/smpte2094_50/utils.h)
+add_library(smpte2094_50_utils src/utils.cc include/smpte2094_50/utils.h
+                               src/pchip.cc include/smpte2094_50/pchip.h)
 add_dependencies(smpte2094_50_utils generate_include_links)
 
 target_link_libraries(

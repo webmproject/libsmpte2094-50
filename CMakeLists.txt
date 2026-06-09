@@ -64,10 +64,8 @@ add_custom_target(
     ${CMAKE_COMMAND} -E create_symlink
     "${CMAKE_CURRENT_SOURCE_DIR}/include/smpte2094_50"
     "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/libsmpte2094_50/smpte2094_50"
-  COMMAND
-    ${CMAKE_COMMAND} -E create_symlink
-    "${CMAKE_CURRENT_BINARY_DIR}/_deps/abseil-cpp-src/absl"
-    "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/absl")
+  COMMAND ${CMAKE_COMMAND} -E create_symlink "${abseil-cpp_SOURCE_DIR}/absl"
+          "${CMAKE_CURRENT_BINARY_DIR}/virtual_includes/absl")
 
 # -----------------------------------------------------------------------------
 # Library Definition
@@ -83,13 +81,8 @@ add_dependencies(smpte2094_50_utils generate_include_links)
 
 target_link_libraries(
   smpte2094_50_utils
-  PUBLIC absl::status
-         absl::statusor
-         absl::strings
-         absl::span
-         smpte2094_50
-         pchip_rs_bridge
-         utils_rs_bridge)
+  PUBLIC absl::status absl::statusor absl::strings absl::span smpte2094_50
+  PRIVATE pchip_rs_bridge utils_rs_bridge)
 target_include_directories(
   smpte2094_50_utils
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

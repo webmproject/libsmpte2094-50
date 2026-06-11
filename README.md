@@ -16,3 +16,12 @@ git clone https://github.com/webmproject/libsmpte2094-50.git
 cmake -S libsmpte2094-50 -B libsmpte2094-50/build
 cmake --build libsmpte2094-50/build --config Release --parallel
 ```
+
+## Release instructions
+
+Before doing a gitag and release, you need to upgrade the Cargo.toml:
+
+```sh
+cargo upgrade --incompatible
+cargo publish
+```

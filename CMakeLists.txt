@@ -103,5 +103,14 @@ endif()
 
 if(SMPTE2094_ENABLE_TESTS)
   enable_testing()
+  # Add Rust tests through cargo, using the same toolchain and target as
+  # Corrosion.
+  add_test(
+    NAME rust_tests
+    COMMAND
+      ${Rust_CARGO_CACHED} test --manifest-path ${RUST_LIB_DIR}/Cargo.toml
+      --target ${Rust_CARGO_TARGET_CACHED} $<$<CONFIG:Release>:--release>)
+  set_tests_properties(rust_tests PROPERTIES ENVIRONMENT
+                                             "RUSTUP_AUTO_UPDATE=no")
   add_subdirectory(tests)
 endif()

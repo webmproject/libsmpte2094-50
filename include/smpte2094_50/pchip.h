@@ -68,6 +68,9 @@ class GainCurve {
  public:
   static absl::StatusOr<GainCurve> Create(absl::Span<const float> x,
                                           absl::Span<const float> y);
+  static absl::StatusOr<GainCurve> Create(absl::Span<const float> x,
+                                          absl::Span<const float> y,
+                                          absl::Span<const float> slopes);
 
   GainCurve(const GainCurve& other);
   GainCurve& operator=(const GainCurve& other);

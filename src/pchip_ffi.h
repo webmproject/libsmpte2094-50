@@ -173,6 +173,9 @@ class GainCurve {
 
   static GainCurveResult create_ffi(absl::Span<const float> x,
                                     absl::Span<const float> y);
+  static GainCurveResult create_with_slopes_ffi(absl::Span<const float> x,
+                                                absl::Span<const float> y,
+                                                absl::Span<const float> slopes);
 
   float interpolate(float xi) const { return curve->interpolate(xi); }
 
@@ -211,6 +214,14 @@ inline GainCurveResult GainCurve::create_ffi(absl::Span<const float> x,
   return GainCurveResult(pchip_ffi::gain_curve_create_ffi(
       ::rust::Slice<const float>(x.data(), x.size()),
       ::rust::Slice<const float>(y.data(), y.size())));
+}
+inline GainCurveResult GainCurve::create_with_slopes_ffi(
+    absl::Span<const float> x, absl::Span<const float> y,
+    absl::Span<const float> slopes) {
+  return GainCurveResult(pchip_ffi::gain_curve_create_with_slopes_ffi(
+      ::rust::Slice<const float>(x.data(), x.size()),
+      ::rust::Slice<const float>(y.data(), y.size()),
+      ::rust::Slice<const float>(slopes.data(), slopes.size())));
 }
 
 inline PchipSlopesResult pchip_slopes_ffi(absl::Span<const float> x,

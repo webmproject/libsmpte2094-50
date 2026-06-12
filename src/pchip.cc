@@ -121,6 +121,17 @@ absl::StatusOr<GainCurve> GainCurve::Create(absl::Span<const float> x,
   return GainCurve(std::make_unique<Impl>(Impl{std::move(result.curve)}));
 }
 
+absl::StatusOr<GainCurve> GainCurve::Create(absl::Span<const float> x,
+                                            absl::Span<const float> y,
+                                            absl::Span<const float> slopes) {
+  ::pchip_rs::GainCurveResult result =
+      pchip_rs::GainCurve::create_with_slopes_ffi(x, y, slopes);
+  if (!result.success) {
+    return absl::InvalidArgumentError(result.get_error_message());
+  }
+  return GainCurve(std::make_unique<Impl>(Impl{std::move(result.curve)}));
+}
+
 GainCurve::GainCurve(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {}
 
 GainCurve::GainCurve(const GainCurve& other)

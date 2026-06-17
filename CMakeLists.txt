@@ -47,8 +47,9 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Corrosion)
 
 # Compile the Rust Library and CXX bridges.
-corrosion_import_crate(MANIFEST_PATH
-                       ${CMAKE_CURRENT_SOURCE_DIR}/rust_lib/Cargo.toml)
+corrosion_import_crate(
+  MANIFEST_PATH ${CMAKE_CURRENT_SOURCE_DIR}/rust_lib/Cargo.toml FEATURES
+  cxxbridge)
 
 corrosion_add_cxxbridge(pchip_rs_bridge CRATE libsmpte2094_50 FILES
                         pchip_ffi.rs)
@@ -109,7 +110,8 @@ if(SMPTE2094_ENABLE_TESTS)
     NAME rust_tests
     COMMAND
       ${Rust_CARGO_CACHED} test --manifest-path ${RUST_LIB_DIR}/Cargo.toml
-      --target ${Rust_CARGO_TARGET_CACHED} $<$<CONFIG:Release>:--release>)
+      --features cxxbridge --target ${Rust_CARGO_TARGET_CACHED}
+      $<$<CONFIG:Release>:--release>)
   set_tests_properties(rust_tests PROPERTIES ENVIRONMENT
                                              "RUSTUP_AUTO_UPDATE=no")
   add_subdirectory(tests)

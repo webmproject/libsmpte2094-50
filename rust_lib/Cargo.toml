@@ -1,11 +1,10 @@
 [package]
 name = "libsmpte2094-50"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 description = "SMPTE 2094-50 serialization/deserialization and utils"
 readme = "../README.md"
 license = "Apache-2.0"
-license-file = "../LICENSE"
 repository = "https://github.com/webmproject/libsmpte2094-50"
 homepage = "https://github.com/webmproject/libsmpte2094-50"
 

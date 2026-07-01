@@ -1,6 +1,6 @@
 [package]
 name = "libsmpte2094-50"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 description = "SMPTE 2094-50 serialization/deserialization and utils"
 readme = "../README.md"

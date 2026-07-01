@@ -27,7 +27,7 @@ runs:
         echo "CARGO_KEY=cargo-`cargo --version|cut -d' ' -f2`-${{ hashFiles('.github/actions/setup-common/action.yml', steps.workflow-info.outputs.path) }}" >> $GITHUB_ENV
       shell: bash
     - name: Cache all of cargo
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       continue-on-error: true
       with:
         path: |
@@ -37,7 +37,7 @@ runs:
           corrosion
         key: ${{ env.CARGO_KEY }}-${{ runner.os }}-${{ runner.arch }}
     - name: Cache external dependencies in build/_deps
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: build/_deps
         key: deps-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ inputs.extra-key }}-${{ env.CARGO_KEY }}-${{ hashFiles('.github/actions/**/*', steps.workflow-info.outputs.path, 'CMakeLists.txt') }}

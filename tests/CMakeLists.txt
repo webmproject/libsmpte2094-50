@@ -12,9 +12,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-# TODO(vrabaud) switch once there is a new version with the fix.
-# set(SMPTE2094_50_GTEST_GIT_TAG v1.17.0)
-set(SMPTE2094_50_GTEST_GIT_TAG fa8438ae6b70c57010177de47a9f13d7041a6328)
+set(SMPTE2094_50_GTEST_GIT_TAG v1.18.0)
 
 enable_testing()
 
@@ -35,8 +33,8 @@ FetchContent_Declare(
   googletest
   EXCLUDE_FROM_ALL
   GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG ${SMPTE2094_50_GTEST_GIT_TAG})
-# TODO(vrabaud) re-enable with a proper release GIT_SHALLOW ON)
+  GIT_TAG ${SMPTE2094_50_GTEST_GIT_TAG}
+  GIT_SHALLOW ON)
 FetchContent_MakeAvailable(googletest)
 
 add_library(GTest::GTest ALIAS gtest)

@@ -30,7 +30,8 @@ fn three_point_finite_difference(h0: f32, h1: f32, s0: f32, s1: f32) -> f32 {
     m
 }
 
-/// Result structure for FFI calls computing PCHIP slopes, containing the slopes or an error message.
+/// Result structure for FFI calls computing PCHIP slopes, containing the slopes or an error
+/// message.
 #[repr(C)]
 pub struct PchipSlopesResult {
     /// The computed PCHIP slope values for each control point.
@@ -59,8 +60,6 @@ pub fn pchip_slopes_ffi(x: &[f32], y: &[f32]) -> PchipSlopesResult {
         Err(e) => PchipSlopesResult { slopes: Vec::new(), success: false, error_message: e },
     }
 }
-
-
 
 /// Computes the slopes for a piecewise cubic interpolator with the given control points.
 ///
@@ -152,7 +151,8 @@ pub struct PchipInterpolator {
     pub slopes: Vec<f32>,
 }
 
-/// Result structure for reverse interpolation evaluations, indicating the estimated `xi` and whether the search succeeded.
+/// Result structure for reverse interpolation evaluations, indicating the estimated `xi` and
+/// whether the search succeeded.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct ReverseInterpolateResult {
@@ -162,7 +162,8 @@ pub struct ReverseInterpolateResult {
     pub success: bool,
 }
 
-/// Result structure for FFI calls creating a `PchipInterpolator`, containing the interpolator instance or an error message.
+/// Result structure for FFI calls creating a `PchipInterpolator`, containing the interpolator
+/// instance or an error message.
 pub struct PchipInterpolatorResult {
     /// The resulting PCHIP interpolator instance if creation succeeded.
     pub interp: PchipInterpolator,
@@ -194,13 +195,15 @@ impl PchipInterpolator {
         }
     }
 
-    /// FFI wrapper for `PchipInterpolator::create_with_slopes`, returning a `PchipInterpolatorResult`.
+    /// FFI wrapper for `PchipInterpolator::create_with_slopes`, returning a
+    /// `PchipInterpolatorResult`.
     pub fn create_with_slopes_ffi(x: &[f32], y: &[f32], slopes: &[f32]) -> PchipInterpolatorResult {
         let interp = Self::create_with_slopes(x.to_vec(), y.to_vec(), slopes.to_vec());
         PchipInterpolatorResult { interp, success: true, error_message: String::new() }
     }
 
-    /// Creates a new `PchipInterpolator` with provided control points `x`, `y`, and precomputed `slopes`.
+    /// Creates a new `PchipInterpolator` with provided control points `x`, `y`, and precomputed
+    /// `slopes`.
     pub fn create_with_slopes(x: Vec<f32>, y: Vec<f32>, slopes: Vec<f32>) -> Self {
         Self { x, y, slopes }
     }
@@ -360,7 +363,8 @@ pub struct GainCurve {
     pub y_min: f32,
 }
 
-/// Result structure for FFI calls creating a `GainCurve`, containing the gain curve instance or an error message.
+/// Result structure for FFI calls creating a `GainCurve`, containing the gain curve instance or an
+/// error message.
 pub struct GainCurveResult {
     /// The resulting gain curve instance if creation succeeded.
     pub curve: GainCurve,
@@ -595,7 +599,8 @@ mod tests {
         let x = vec![1.0, 2.0];
         let y = vec![1.0, 2.0];
         let curve = GainCurve::create(x, y).unwrap();
-        // xi = 4.0, x_back = 2.0, y_back = 2.0. Interpolated = 2.0 + log2(2.0/4.0) = 2.0 - 1.0 = 1.0.
+        // xi = 4.0, x_back = 2.0, y_back = 2.0. Interpolated = 2.0 + log2(2.0/4.0) = 2.0 - 1.0 =
+        // 1.0.
         assert_eq!(curve.interpolate(4.0), 1.0);
     }
 }

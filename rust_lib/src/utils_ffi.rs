@@ -15,10 +15,10 @@
  */
 // CXX bridge for utils_rs.
 use crate::utils::{
+    dynamic_metadata_populate_pchip_slopes_ffi, dynamic_metadata_populate_using_rwtm,
+    from_st209450_ffi, is_valid_ffi, populate_implicit_parameters_ffi, to_st209450_ffi,
     ComponentMix, ControlPoint, DynamicMetadata, FromSt209450Result, SimpleResult,
     ToSt209450Result, ToneMappingRule,
-    to_st209450_ffi, is_valid_ffi, from_st209450_ffi, populate_implicit_parameters_ffi,
-    dynamic_metadata_populate_pchip_slopes_ffi, dynamic_metadata_populate_using_rwtm,
 };
 
 #[cxx::bridge(namespace = "utils_ffi")]
@@ -127,7 +127,9 @@ pub mod ffi {
         #[cxx_name = "from_st209450_ffi"]
         fn from_st209450_ffi_bridge(data: &[u8]) -> Box<FromSt209450Result>;
         #[cxx_name = "populate_implicit_parameters_ffi"]
-        fn populate_implicit_parameters_ffi_bridge(metadata: &mut DynamicMetadata) -> Box<SimpleResult>;
+        fn populate_implicit_parameters_ffi_bridge(
+            metadata: &mut DynamicMetadata,
+        ) -> Box<SimpleResult>;
         #[cxx_name = "dynamic_metadata_populate_pchip_slopes_ffi"]
         fn dynamic_metadata_populate_pchip_slopes_ffi_bridge(
             metadata: &mut DynamicMetadata,
@@ -189,7 +191,9 @@ pub fn from_st209450_ffi_bridge(data: &[u8]) -> Box<FromSt209450Result> {
     Box::new(from_st209450_ffi(data))
 }
 
-pub fn populate_implicit_parameters_ffi_bridge(metadata: &mut DynamicMetadata) -> Box<SimpleResult> {
+pub fn populate_implicit_parameters_ffi_bridge(
+    metadata: &mut DynamicMetadata,
+) -> Box<SimpleResult> {
     Box::new(populate_implicit_parameters_ffi(metadata))
 }
 
@@ -360,10 +364,7 @@ impl FromSt209450Result {
 
 impl Clone for SimpleResult {
     fn clone(&self) -> Self {
-        Self {
-            success: self.success,
-            error_message: self.error_message.clone(),
-        }
+        Self { success: self.success, error_message: self.error_message.clone() }
     }
 }
 

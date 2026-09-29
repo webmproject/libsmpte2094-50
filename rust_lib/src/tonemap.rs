@@ -60,11 +60,7 @@ impl ActiveRule {
                     let g = curve.interpolate(m[0]);
                     [g, g, g]
                 } else {
-                    [
-                        curve.interpolate(m[0]),
-                        curve.interpolate(m[1]),
-                        curve.interpolate(m[2]),
-                    ]
+                    [curve.interpolate(m[0]), curve.interpolate(m[1]), curve.interpolate(m[2])]
                 }
             }
         }
@@ -102,8 +98,8 @@ impl ToneMapper {
         }
 
         if !metadata.has_adaptive_tone_map_flag {
-            // In this case, "the headroom-adaptive tone mapping can be decided by the output system."
-            // Just return identity.
+            // In this case, "the headroom-adaptive tone mapping can be decided by the output
+            // system." Just return identity.
             return Ok(Self::identity());
         }
 
@@ -123,15 +119,11 @@ impl ToneMapper {
                 rule_index: Some(i),
             });
         }
-        candidates.push(RuleCandidate {
-            headroom: meta.baseline_hdr_headroom_log2,
-            rule_index: None,
-        });
+        candidates
+            .push(RuleCandidate { headroom: meta.baseline_hdr_headroom_log2, rule_index: None });
 
         candidates.sort_by(|a, b| {
-            a.headroom
-                .partial_cmp(&b.headroom)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            a.headroom.partial_cmp(&b.headroom).unwrap_or(std::cmp::Ordering::Equal)
         });
 
         if candidates.len() == 1 {
@@ -158,10 +150,7 @@ impl ToneMapper {
                     let y: Vec<f32> = rule.curve.iter().map(|p| p.y).collect();
                     let slopes: Vec<f32> = rule.curve.iter().map(|p| p.m).collect();
                     let curve = GainCurve::create_with_slopes(x, y, slopes);
-                    Ok(ActiveRule::Curve {
-                        mix: rule.mix,
-                        curve,
-                    })
+                    Ok(ActiveRule::Curve { mix: rule.mix, curve })
                 }
             }
         };
@@ -183,13 +172,7 @@ impl ToneMapper {
             _ => false,
         };
 
-        Ok(Self {
-            rule_0,
-            rule_1,
-            weight_0,
-            weight_1,
-            is_identity,
-        })
+        Ok(Self { rule_0, rule_1, weight_0, weight_1, is_identity })
     }
 
     /// Returns whether this tone mapper is a no-op identity transform.
@@ -233,10 +216,7 @@ impl ToneMapper {
     /// In-place tone maps an interleaved float RGB buffer.
     pub fn tone_map_buffer(&self, buffer: &mut [f32]) -> Result<(), String> {
         if buffer.len() % 3 != 0 {
-            return Err(format!(
-                "Buffer length must be a multiple of 3 (got {})",
-                buffer.len()
-            ));
+            return Err(format!("Buffer length must be a multiple of 3 (got {})", buffer.len()));
         }
 
         if self.is_identity {
@@ -265,12 +245,7 @@ mod tests {
 
     #[gtest]
     fn test_component_mixing_preserves_neutral_gray() {
-        let mix = ComponentMix {
-            rgb: [0.2, 0.7, 0.1],
-            max: 0.5,
-            min: 0.1,
-            component: 0.1,
-        };
+        let mix = ComponentMix { rgb: [0.2, 0.7, 0.1], max: 0.5, min: 0.1, component: 0.1 };
         // By definition in Section 6.4.1, component mixing on neutral gray values is identity.
         let gray_sub = [0.42, 0.42, 0.42];
         let mixed_sub = evaluate_component_mixing(&mix, gray_sub);
@@ -287,12 +262,7 @@ mod tests {
 
     #[gtest]
     fn test_component_mixing_with_component_weight() {
-        let mix = ComponentMix {
-            rgb: [0.3, 0.6, 0.1],
-            max: 0.0,
-            min: 0.0,
-            component: 0.5,
-        };
+        let mix = ComponentMix { rgb: [0.3, 0.6, 0.1], max: 0.0, min: 0.0, component: 0.5 };
         // For c = [1.0, 0.0, 0.0]:
         // luma = 0.3 * 1.0 = 0.3
         // base = 0.3
@@ -312,24 +282,14 @@ mod tests {
         let c = [0.2, 0.8, 0.5];
 
         // max(R, G, B) mixing (used in RWTM).
-        let mix_max = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 1.0,
-            min: 0.0,
-            component: 0.0,
-        };
+        let mix_max = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 1.0, min: 0.0, component: 0.0 };
         let m_max = evaluate_component_mixing(&mix_max, c);
         assert!((m_max[0] - 0.8).abs() < EPSILON);
         assert!((m_max[1] - 0.8).abs() < EPSILON);
         assert!((m_max[2] - 0.8).abs() < EPSILON);
 
         // min(R, G, B) mixing.
-        let mix_min = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 1.0,
-            component: 0.0,
-        };
+        let mix_min = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 1.0, component: 0.0 };
         let m_min = evaluate_component_mixing(&mix_min, c);
         assert!((m_min[0] - 0.2).abs() < EPSILON);
         assert!((m_min[1] - 0.2).abs() < EPSILON);
@@ -357,24 +317,9 @@ mod tests {
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 2.0;
         rule.use_pchip_slope = true;
-        rule.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
-        rule.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 1.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 64.0,
-                y: 1.0,
-                m: 0.0,
-            },
-        ];
+        rule.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
+        rule.curve =
+            vec![ControlPoint { x: 0.0, y: 1.0, m: 0.0 }, ControlPoint { x: 64.0, y: 1.0, m: 0.0 }];
         agtm.rules.push(rule);
 
         let mapper = ToneMapper::new(&agtm, 2.0).unwrap();
@@ -398,24 +343,9 @@ mod tests {
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 2.0;
         rule.use_pchip_slope = true;
-        rule.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
-        rule.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 1.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 64.0,
-                y: 1.0,
-                m: 0.0,
-            },
-        ];
+        rule.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
+        rule.curve =
+            vec![ControlPoint { x: 0.0, y: 1.0, m: 0.0 }, ControlPoint { x: 64.0, y: 1.0, m: 0.0 }];
         agtm.rules.push(rule);
 
         // Target headroom 2.0: full interpolation to the alternate rule (multiplier = 2^1 = 2.0).
@@ -496,24 +426,10 @@ mod tests {
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 1.0;
         rule.use_pchip_slope = true;
-        rule.mix = ComponentMix {
-            rgb: [0.2627, 0.6780, 0.0593],
-            max: 0.0,
-            min: 0.0,
-            component: 0.0,
-        };
-        rule.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 0.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 1.0,
-                y: 1.0,
-                m: 1.0,
-            },
-        ];
+        rule.mix =
+            ComponentMix { rgb: [0.2627, 0.6780, 0.0593], max: 0.0, min: 0.0, component: 0.0 };
+        rule.curve =
+            vec![ControlPoint { x: 0.0, y: 0.0, m: 0.0 }, ControlPoint { x: 1.0, y: 1.0, m: 1.0 }];
         agtm.rules.push(rule);
 
         let mapper = ToneMapper::new(&agtm, 1.0).unwrap();
@@ -549,29 +465,12 @@ mod tests {
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 0.0;
         rule.use_pchip_slope = true;
-        rule.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
+        rule.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
         // Compressive tone mapping curve: (0, 0), (1.0, -0.5), (4.0, -1.0)
         rule.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 0.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 1.0,
-                y: -0.5,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 4.0,
-                y: -1.0,
-                m: 0.0,
-            },
+            ControlPoint { x: 0.0, y: 0.0, m: 0.0 },
+            ControlPoint { x: 1.0, y: -0.5, m: 0.0 },
+            ControlPoint { x: 4.0, y: -1.0, m: 0.0 },
         ];
         agtm.rules.push(rule);
 
@@ -609,25 +508,10 @@ mod tests {
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 2.0;
         rule.use_pchip_slope = true;
-        rule.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
+        rule.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
         // Control points end at x = 1.0, y = 0.0
-        rule.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 0.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 1.0,
-                y: 0.0,
-                m: 0.0,
-            },
-        ];
+        rule.curve =
+            vec![ControlPoint { x: 0.0, y: 0.0, m: 0.0 }, ControlPoint { x: 1.0, y: 0.0, m: 0.0 }];
         agtm.rules.push(rule);
 
         let mapper = ToneMapper::new(&agtm, 2.0).unwrap();
@@ -659,25 +543,10 @@ mod tests {
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 2.0;
         rule.use_pchip_slope = true;
-        rule.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
+        rule.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
         // Leftmost control point starts at x = 0.5 with gain y = 1.0 (multiplier 2^1 = 2.0).
-        rule.curve = vec![
-            ControlPoint {
-                x: 0.5,
-                y: 1.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 2.0,
-                y: 0.0,
-                m: 0.0,
-            },
-        ];
+        rule.curve =
+            vec![ControlPoint { x: 0.5, y: 1.0, m: 0.0 }, ControlPoint { x: 2.0, y: 0.0, m: 0.0 }];
         agtm.rules.push(rule);
 
         let mapper = ToneMapper::new(&agtm, 2.0).unwrap();
@@ -708,29 +577,14 @@ mod tests {
         // Rule with use_pchip_slope = false and custom slopes.
         // Points (0, 0) and (1, 0).
         // With use_pchip_slope = true, PCHIP slopes would be 0, yielding flat y=0 everywhere.
-        // With custom slopes m_0 = 2.0, m_1 = -2.0, the Hermite cubic polynomial evaluates at x = 0.5:
-        // y(0.5) = 0.125 * 1.0 * 2.0 + (-0.125) * 1.0 * (-2.0) = 0.5.
+        // With custom slopes m_0 = 2.0, m_1 = -2.0, the Hermite cubic polynomial evaluates at x =
+        // 0.5: y(0.5) = 0.125 * 1.0 * 2.0 + (-0.125) * 1.0 * (-2.0) = 0.5.
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 1.0;
         rule.use_pchip_slope = false;
-        rule.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
-        rule.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 0.0,
-                m: 2.0,
-            },
-            ControlPoint {
-                x: 1.0,
-                y: 0.0,
-                m: -2.0,
-            },
-        ];
+        rule.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
+        rule.curve =
+            vec![ControlPoint { x: 0.0, y: 0.0, m: 2.0 }, ControlPoint { x: 1.0, y: 0.0, m: -2.0 }];
         agtm.rules.push(rule);
 
         let mapper = ToneMapper::new(&agtm, 1.0).unwrap();
@@ -764,48 +618,18 @@ mod tests {
         let mut rule1 = ToneMappingRule::default();
         rule1.alternate_hdr_headroom_log2 = 1.0;
         rule1.use_pchip_slope = true;
-        rule1.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
-        rule1.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 1.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 64.0,
-                y: 1.0,
-                m: 0.0,
-            },
-        ];
+        rule1.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
+        rule1.curve =
+            vec![ControlPoint { x: 0.0, y: 1.0, m: 0.0 }, ControlPoint { x: 64.0, y: 1.0, m: 0.0 }];
         agtm.rules.push(rule1);
 
         // Rule 2: alternate headroom = 3.0, constant gain = +3.0 in log2 (multiplier = 8.0).
         let mut rule2 = ToneMappingRule::default();
         rule2.alternate_hdr_headroom_log2 = 3.0;
         rule2.use_pchip_slope = true;
-        rule2.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
-        rule2.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 3.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 64.0,
-                y: 3.0,
-                m: 0.0,
-            },
-        ];
+        rule2.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
+        rule2.curve =
+            vec![ControlPoint { x: 0.0, y: 3.0, m: 0.0 }, ControlPoint { x: 64.0, y: 3.0, m: 0.0 }];
         agtm.rules.push(rule2);
 
         // Target headroom 2.0 is midway between Rule 1 (1.0) and Rule 2 (3.0).
@@ -838,23 +662,10 @@ mod tests {
         let mut rule_a = ToneMappingRule::default();
         rule_a.alternate_hdr_headroom_log2 = 0.0;
         rule_a.use_pchip_slope = true;
-        rule_a.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
+        rule_a.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
         rule_a.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: -1.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 64.0,
-                y: -1.0,
-                m: 0.0,
-            },
+            ControlPoint { x: 0.0, y: -1.0, m: 0.0 },
+            ControlPoint { x: 64.0, y: -1.0, m: 0.0 },
         ];
         agtm.rules.push(rule_a);
 
@@ -862,34 +673,21 @@ mod tests {
         let mut rule_b = ToneMappingRule::default();
         rule_b.alternate_hdr_headroom_log2 = 4.0;
         rule_b.use_pchip_slope = true;
-        rule_b.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
-        rule_b.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 1.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 64.0,
-                y: 1.0,
-                m: 0.0,
-            },
-        ];
+        rule_b.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
+        rule_b.curve =
+            vec![ControlPoint { x: 0.0, y: 1.0, m: 0.0 }, ControlPoint { x: 64.0, y: 1.0, m: 0.0 }];
         agtm.rules.push(rule_b);
 
         // Target headroom 1.0 (between Rule A at 0.0 and Baseline at 2.0):
-        // 50% Rule A (-1.0) + 50% Baseline (0.0) => log2 gain = -0.5 => multiplier = 2^-0.5 ≈ 0.707107.
+        // 50% Rule A (-1.0) + 50% Baseline (0.0) => log2 gain = -0.5 => multiplier = 2^-0.5 ≈
+        // 0.707107.
         let mapper_down = ToneMapper::new(&agtm, 1.0).unwrap();
         let out_down = mapper_down.tone_map_pixel([1.0, 1.0, 1.0]);
         assert!((out_down[0] - 0.707107).abs() < EPSILON);
 
         // Target headroom 3.0 (between Baseline at 2.0 and Rule B at 4.0):
-        // 50% Baseline (0.0) + 50% Rule B (+1.0) => log2 gain = +0.5 => multiplier = 2^0.5 ≈ 1.414214.
+        // 50% Baseline (0.0) + 50% Rule B (+1.0) => log2 gain = +0.5 => multiplier = 2^0.5 ≈
+        // 1.414214.
         let mapper_up = ToneMapper::new(&agtm, 3.0).unwrap();
         let out_up = mapper_up.tone_map_pixel([1.0, 1.0, 1.0]);
         assert!((out_up[0] - 1.414214).abs() < EPSILON);
@@ -910,24 +708,9 @@ mod tests {
         let mut rule = ToneMappingRule::default();
         rule.alternate_hdr_headroom_log2 = 2.0;
         rule.use_pchip_slope = true;
-        rule.mix = ComponentMix {
-            rgb: [0.0, 0.0, 0.0],
-            max: 0.0,
-            min: 0.0,
-            component: 1.0,
-        };
-        rule.curve = vec![
-            ControlPoint {
-                x: 0.0,
-                y: 1.0,
-                m: 0.0,
-            },
-            ControlPoint {
-                x: 64.0,
-                y: 1.0,
-                m: 0.0,
-            },
-        ];
+        rule.mix = ComponentMix { rgb: [0.0, 0.0, 0.0], max: 0.0, min: 0.0, component: 1.0 };
+        rule.curve =
+            vec![ControlPoint { x: 0.0, y: 1.0, m: 0.0 }, ControlPoint { x: 64.0, y: 1.0, m: 0.0 }];
         agtm.rules.push(rule);
 
         // Target headroom 5.0 > max alternate headroom (2.0).

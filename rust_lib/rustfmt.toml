@@ -1,0 +1,28 @@
+edition = "2024"
+style_edition = "2021"
+
+# The "Default" setting has a heuristic which splits lines too aggresively.
+# We are willing to revisit this setting in future versions of rustfmt.
+# Bugs:
+#   * https://github.com/rust-lang/rustfmt/issues/3119
+#   * https://github.com/rust-lang/rustfmt/issues/3120
+use_small_heuristics = "Max"
+
+newline_style = "Unix"
+
+# Wrap over-long comments, the same way code is wrapped.
+#
+# `comment_width` is set equal to `max_width` (100, the rustfmt default) so that
+# the wrap column does not move around with indentation. rustfmt wraps a comment
+# at
+#
+#     min(indent + comment_width, max_width)
+#
+# So if `comment_width` == `max_width`, we get consistent wrapping regardless
+# of indentation.
+#
+# Never set `comment_width` below `max_width`.
+wrap_comments = true
+comment_width = 100
+
+format_generated_files = false

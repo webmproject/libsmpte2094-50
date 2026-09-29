@@ -15,8 +15,8 @@
  */
 // Basic types, according to SMPTE ST 2094-50.
 // Serialization and deserialization functions are also provided.
-use std::f32::consts::PI;
 use crate::pchip::pchip_slopes;
+use std::f32::consts::PI;
 
 const NUM_MIX_PARAMS: usize = 6;
 const MIX_PARAM_SCALE: f32 = 50000.0;
@@ -58,7 +58,8 @@ pub struct ControlPoint {
 }
 
 impl ControlPoint {
-    /// Returns true if the point satisfies the validity constraints in SMPTE ST 2094-50, section 6.5.2.
+    /// Returns true if the point satisfies the validity constraints in SMPTE ST 2094-50, section
+    /// 6.5.2.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.5.2.
         (0.0..=64.0).contains(&self.x) && (-6.0..=6.0).contains(&self.y)
@@ -80,7 +81,8 @@ pub struct ComponentMix {
 }
 
 impl ComponentMix {
-    /// Returns true if the component mix satisfies the validity constraints in SMPTE ST 2094-50, section 6.4.2.
+    /// Returns true if the component mix satisfies the validity constraints in SMPTE ST 2094-50,
+    /// section 6.4.2.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.4.2.
         let all_in_range = self.rgb.iter().all(|&c| (0.0..=1.0).contains(&c))
@@ -132,7 +134,8 @@ pub struct ToneMappingRule {
 }
 
 impl ToneMappingRule {
-    /// Returns true if the tone mapping rule satisfies the validity constraints in SMPTE ST 2094-50.
+    /// Returns true if the tone mapping rule satisfies the validity constraints in SMPTE ST
+    /// 2094-50.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.2.2.
         if !(0.0..=6.0).contains(&self.alternate_hdr_headroom_log2) {
@@ -184,7 +187,8 @@ pub struct DynamicMetadata {
     pub rules: Vec<ToneMappingRule>,
 }
 
-/// Result of a SMPTE ST 2094-50 serialization for C++ wrapping, containing the serialized bytes or an error message.
+/// Result of a SMPTE ST 2094-50 serialization for C++ wrapping, containing the serialized bytes or
+/// an error message.
 pub struct ToSt209450Result {
     /// True if the serialization was successful, false otherwise.
     pub success: bool,
@@ -218,9 +222,8 @@ pub fn is_valid_ffi(metadata: &DynamicMetadata) -> bool {
     metadata.is_valid()
 }
 
-
-
-/// Result of a SMPTE ST 2094-50 deserialization for C++ wrapping, containing the parsed metadata or an error message.
+/// Result of a SMPTE ST 2094-50 deserialization for C++ wrapping, containing the parsed metadata or
+/// an error message.
 #[repr(C)]
 pub struct FromSt209450Result {
     /// True if deserialization was successful, false otherwise.
@@ -252,7 +255,8 @@ pub fn from_st209450_ffi(data: &[u8]) -> FromSt209450Result {
     }
 }
 
-/// A generic result structure for C++ wrapping representing success or failure with an error message.
+/// A generic result structure for C++ wrapping representing success or failure with an error
+/// message.
 pub struct SimpleResult {
     /// True if the operation was successful, false otherwise.
     pub success: bool,
@@ -286,8 +290,8 @@ pub fn dynamic_metadata_populate_pchip_slopes_ffi(metadata: &mut DynamicMetadata
 }
 
 impl DynamicMetadata {
-    /// Returns true if the metadata satisfies all mandatory parameter constraints in SMPTE ST 2094-50,
-    /// including constraints required for serialization.
+    /// Returns true if the metadata satisfies all mandatory parameter constraints in SMPTE ST
+    /// 2094-50, including constraints required for serialization.
     pub fn is_valid(&self) -> bool {
         // SMPTE ST 2094-50, section 6.1.2.
         if self.hdr_reference_white <= 0.0 || self.hdr_reference_white > 10000.0 {
@@ -387,7 +391,8 @@ impl DynamicMetadata {
         self.rules.push(rule);
     }
 
-    /// Implements section C.3.8 of SMPTE ST 2094-50, populating rules using Reference White Tone Mapping (RWTM).
+    /// Implements section C.3.8 of SMPTE ST 2094-50, populating rules using Reference White Tone
+    /// Mapping (RWTM).
     fn populate_using_rwtm(&mut self) {
         self.has_adaptive_tone_map_flag = true;
         self.use_reference_white_tone_mapping_flag = true;

@@ -61,6 +61,38 @@ TEST(MetadataTest_St209450Roundtrip, St209450Roundtrip) {
   EXPECT_THAT(metadata_rt, DynamicMetadataEq(metadata));
 }
 
+TEST(MetadataTest_St209450Roundtrip, ScaledMaxRgbMixRoundtrip) {
+  // Equal R, G and B weights with max = 0.5, but not the 1/6 weights of
+  // component_mixing_type 2. After normalization this is max(R, G, B) only.
+  DynamicMetadata metadata = {
+      .hdr_reference_white = 203,
+      .has_adaptive_tone_map_flag = true,
+      .baseline_hdr_headroom_log2 = 0.0f,
+      .use_reference_white_tone_mapping_flag = false,
+      .gain_application_space_chromaticities =
+          DynamicMetadata::kChromaticitiesRec2020,
+  };
+  metadata.rules.push_back({
+      .alternate_hdr_headroom_log2 = 1.0f,
+      .curve = {{.x = 1.0f, .y = 0.5f}},
+      .use_pchip_slope = true,
+      .mix = {.rgb = {0.0f, 0.0f, 0.0f},
+              .max = 0.5f,
+              .min = 0.0f,
+              .component = 0.0f},
+  });
+
+  auto st209450_data_or = ToSt209450(metadata);
+  ASSERT_TRUE(st209450_data_or.ok());
+  auto metadata_rt_or = FromSt209450(*st209450_data_or);
+  ASSERT_TRUE(metadata_rt_or.ok());
+  ASSERT_EQ(metadata_rt_or->rules.size(), 1);
+
+  const ComponentMix expected_mix = {
+      .rgb = {0.0f, 0.0f, 0.0f}, .max = 1.0f, .min = 0.0f, .component = 0.0f};
+  EXPECT_THAT(metadata_rt_or->rules[0].mix, ComponentMixEq(expected_mix));
+}
+
 TEST(MetadataTest_St209450Roundtrip, St209450Roundtrip2) {
   DynamicMetadata metadata = {
       .hdr_reference_white = 500,  // Non default reference white.

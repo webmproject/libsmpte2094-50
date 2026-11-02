@@ -138,7 +138,7 @@ void PopulateUsingRwtm(DynamicMetadata& metadata) {
 
 absl::Status PopulatePchipSlopes(DynamicMetadata& metadata) {
   utils_rs::DynamicMetadata rs_metadata = ToRustMetadata(metadata);
-  const auto result =
+  const ::utils_rs::SimpleResult result =
       utils_rs::dynamic_metadata_populate_pchip_slopes_ffi(rs_metadata);
   if (!result.success) {
     return absl::InvalidArgumentError(result.get_error_message());
@@ -149,7 +149,8 @@ absl::Status PopulatePchipSlopes(DynamicMetadata& metadata) {
 
 absl::Status PopulateImplicitParameters(DynamicMetadata& metadata) {
   utils_rs::DynamicMetadata rs_metadata = ToRustMetadata(metadata);
-  const auto result = utils_rs::populate_implicit_parameters_ffi(rs_metadata);
+  const ::utils_rs::SimpleResult result =
+      utils_rs::populate_implicit_parameters_ffi(rs_metadata);
   if (!result.success) {
     return absl::InvalidArgumentError(result.get_error_message());
   }

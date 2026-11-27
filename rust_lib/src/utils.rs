@@ -27,6 +27,9 @@ const DEFAULT_HDR_REFERENCE_WHITE: f32 = 203.0;
 const MAX_CURVE_SIZE: usize = 32;
 const MAX_RULES_SIZE: usize = 4;
 
+/// Weight of each of the R, G and B channels for component mixing type 2 (the max weight is 0.5).
+const MIX_TYPE_2_RGB_WEIGHT: f32 = (0.5 / 3.0) as f32;
+
 const GAIN_APPLICATION_SPACE_CHROMATICITIES: [[f32; 8]; 3] = [
     [0.64, 0.33, 0.3, 0.6, 0.15, 0.06, 0.3127, 0.329], // Rec. 709 (sRGB)
     [0.68, 0.32, 0.265, 0.69, 0.15, 0.06, 0.3127, 0.329], // Display P3
@@ -93,7 +96,8 @@ impl ComponentMix {
         all_in_range && sum > 0.0
     }
 
-    // Returns the mix encoding type, in {0..3}.
+    // Returns the mix encoding type, in {0..3}. Types 0 to 2 are only used if the mix is exactly
+    // equal to the parameters they decode to; anything else is written explicitly as type 3.
     fn mix_type(&self) -> i32 {
         if self.rgb == [0.0, 0.0, 0.0]
             && self.max == 1.0
@@ -107,8 +111,7 @@ impl ComponentMix {
             && self.component == 1.0
         {
             1
-        } else if self.rgb[0] == self.rgb[1]
-            && self.rgb[1] == self.rgb[2]
+        } else if self.rgb == [MIX_TYPE_2_RGB_WEIGHT; 3]
             && self.max == 0.5
             && self.min == 0.0
             && self.component == 0.0
@@ -745,7 +748,7 @@ impl DynamicMetadata {
                     0 => [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
                     1 => [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
                     2 => {
-                        let kw = (0.5 / 3.0) as f32;
+                        let kw = MIX_TYPE_2_RGB_WEIGHT;
                         [kw, kw, kw, 0.5, 0.0, 0.0]
                     }
                     _ => {
@@ -1042,5 +1045,67 @@ mod tests {
             .rules
             .push(ToneMappingRule { alternate_hdr_headroom_log2: 2.000001, ..Default::default() });
         expect_false!(metadata.is_valid());
+    }
+
+    /// Returns the mix of the first rule after serializing and deserializing a single-rule metadata
+    /// using `mix`.
+    fn mix_round_trip(mix: ComponentMix) -> ComponentMix {
+        let metadata = DynamicMetadata {
+            hdr_reference_white: DEFAULT_HDR_REFERENCE_WHITE,
+            has_adaptive_tone_map_flag: true,
+            baseline_hdr_headroom_log2: 0.0,
+            gain_application_space_chromaticities: GAIN_APPLICATION_SPACE_CHROMATICITIES[2],
+            rules: vec![ToneMappingRule {
+                alternate_hdr_headroom_log2: 1.0,
+                curve: vec![ControlPoint { x: 1.0, y: 0.5, m: 0.0 }],
+                use_pchip_slope: true,
+                mix,
+            }],
+            ..Default::default()
+        };
+        let data = metadata.to_st2094_50().unwrap();
+        DynamicMetadata::from_st2094_50(&data).unwrap().rules[0].mix
+    }
+
+    #[gtest]
+    fn test_mix_type() {
+        let max_rgb = ComponentMix { max: 1.0, ..Default::default() };
+        expect_eq!(max_rgb.mix_type(), 0);
+        let component = ComponentMix { component: 1.0, ..Default::default() };
+        expect_eq!(component.mix_type(), 1);
+        let type_2 =
+            ComponentMix { rgb: [MIX_TYPE_2_RGB_WEIGHT; 3], max: 0.5, ..Default::default() };
+        expect_eq!(type_2.mix_type(), 2);
+        // Equal R, G and B weights with max = 0.5 are not type 2 unless the weights are 1/6.
+        let max_rgb_scaled = ComponentMix { max: 0.5, ..Default::default() };
+        expect_eq!(max_rgb_scaled.mix_type(), 3);
+        let equal_rgb = ComponentMix { rgb: [0.25; 3], max: 0.5, ..Default::default() };
+        expect_eq!(equal_rgb.mix_type(), 3);
+    }
+
+    #[gtest]
+    fn test_mix_round_trip_preserves_type_2() {
+        let mix = ComponentMix { rgb: [MIX_TYPE_2_RGB_WEIGHT; 3], max: 0.5, ..Default::default() };
+        expect_eq!(mix_round_trip(mix), mix);
+    }
+
+    #[gtest]
+    fn test_mix_round_trip_scaled_max_rgb() {
+        // Mixes are normalized by their sum, so this is equivalent to max(R, G, B) alone.
+        let mix = ComponentMix { max: 0.5, ..Default::default() };
+        expect_eq!(mix_round_trip(mix), ComponentMix { max: 1.0, ..Default::default() });
+    }
+
+    #[gtest]
+    fn test_mix_round_trip_equal_rgb_weights() {
+        let mix = ComponentMix { rgb: [0.25; 3], max: 0.5, ..Default::default() };
+        let decoded = mix_round_trip(mix);
+        // Normalized by the sum of 1.25.
+        for c in decoded.rgb {
+            expect_float_eq!(c, 0.2);
+        }
+        expect_float_eq!(decoded.max, 0.4);
+        expect_eq!(decoded.min, 0.0);
+        expect_eq!(decoded.component, 0.0);
     }
 }
